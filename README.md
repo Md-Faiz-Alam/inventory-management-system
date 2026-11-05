@@ -31,9 +31,3 @@ Initial repository setup. Application features are not implemented yet.
 
 Create a product, receive stock, issue stock, trigger a low-stock alert,
 inspect the transaction history, and export a report.
-
-## Academic project
-
-Course: BCA
-Semester: 6
-Topic: Inventory Management System
