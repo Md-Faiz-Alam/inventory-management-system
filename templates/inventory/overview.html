@@ -1,190 +1,100 @@
-{% extends "base.html" %}
+{% extends "inventory/workspace.html" %}
 
 {% block title %}Overview · Inventory Workspace{% endblock %}
 
-{% block body %}
-<div class="workspace">
-    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
-        <a class="brand" href="{% url 'overview' %}">
-            <span class="brand-mark" aria-hidden="true">I</span>
-            <span>Inventory<span class="brand-subtitle">WORKSPACE</span></span>
-        </a>
-
-        <span class="nav-label">WORKSPACE</span>
-
-        <nav class="navigation" aria-label="Main">
-            <a
-                class="nav-link is-active"
-                href="{% url 'overview' %}"
-                aria-current="page"
-            >
-                <span class="nav-symbol" aria-hidden="true">◈</span>
-                Overview
-            </a>
-
-            <a class="nav-link" href="#account">
-                <span class="nav-symbol" aria-hidden="true">◎</span>
-                My account
-            </a>
-
-            {% if user.is_staff %}
-                <a class="nav-link" href="{% url 'admin:index' %}">
-                    <span class="nav-symbol" aria-hidden="true">⚙</span>
-                    Administration
-                </a>
-            {% endif %}
-        </nav>
-
-        <div class="sidebar-bottom">
-            <div class="sidebar-user">
-                <span class="avatar">{{ display_name|first|upper }}</span>
-                <div class="user-summary">
-                    <strong>{{ display_name }}</strong>
-                    <small>{{ access_label }}</small>
-                </div>
-            </div>
-
-            <form action="{% url 'logout' %}" method="post">
-                {% csrf_token %}
-                <button class="sidebar-logout" type="submit">
-                    Sign out →
-                </button>
-            </form>
-        </div>
-    </aside>
-
-    <div class="workspace-main">
-        <header class="topbar">
-            <div class="topbar-heading">
-                <button
-                    class="button button-quiet mobile-menu"
-                    type="button"
-                    data-menu-toggle
-                    aria-controls="sidebar"
-                    aria-expanded="false"
-                    hidden
-                >Menu</button>
-
-                <span class="breadcrumb">
-                    Workspace <span>/</span> <strong>Overview</strong>
-                </span>
-            </div>
-
-            <div class="topbar-actions">
-                <span class="today">{% now "D, d M Y" %}</span>
-                <button
-                    class="button button-quiet"
-                    type="button"
-                    data-theme-toggle
-                >Switch theme</button>
-            </div>
-        </header>
-
-        <main class="page-content" id="main-content">
-            <section class="page-heading">
-                <div>
-                    <span class="eyebrow">YOUR DAILY PERSPECTIVE</span>
-                    <h1>Workspace overview</h1>
-                    <p class="muted">
-                        Welcome back, {{ display_name }}.
-                        Here is your workspace.
-                    </p>
-                </div>
-
-                <span class="status-pill">
-                    <span aria-hidden="true"></span>
-                    Signed in
-                </span>
-            </section>
-
-            <section class="welcome-panel" aria-labelledby="welcome-title">
-                <div class="welcome-copy">
-                    <span class="eyebrow">A PLACE FOR EVERY PRODUCT</span>
-                    <h2 id="welcome-title">Less guesswork.<br>More control.</h2>
-                    <p>
-                        Keep your inventory organized and give every
-                        stock movement a clear history.
-                    </p>
-
-                    <a class="button button-light" href="#inventory-status">
-                        View inventory status <span aria-hidden="true">↓</span>
-                    </a>
-                </div>
-
-                <div class="warehouse-art" aria-hidden="true">
-                    <span class="art-orbit"></span>
-                    <span class="art-box art-box-one"></span>
-                    <span class="art-box art-box-two"></span>
-                    <span class="art-box art-box-three"></span>
-                    <span class="art-caption">EVERY MOVEMENT MATTERS</span>
-                </div>
-            </section>
-
-            <div class="overview-grid">
-                <section class="panel inventory-panel" id="inventory-status">
-                    <div class="panel-heading">
-                        <div>
-                            <span class="eyebrow">INVENTORY</span>
-                            <h2>A clear starting point</h2>
-                        </div>
-                        <span class="tag">Getting started</span>
-                    </div>
-
-                    <div class="empty-state">
-                        <div class="empty-icon" aria-hidden="true">▦</div>
-                        <h3>Your inventory starts here.</h3>
-                        <p>
-                            Product management is coming next.
-                            Your catalog, stock levels, and movement history
-                            will appear here as the workspace is set up.
-                        </p>
-                    </div>
-                </section>
-
-                <section class="panel account-panel" id="account">
-                    <div class="panel-heading">
-                        <div>
-                            <span class="eyebrow">PROFILE</span>
-                            <h2>Your account</h2>
-                        </div>
-
-                        <span class="avatar avatar-light">
-                            {{ display_name|first|upper }}
-                        </span>
-                    </div>
-
-                    <dl class="account-details">
-                        <div>
-                            <dt>Username</dt>
-                            <dd>{{ user.username }}</dd>
-                        </div>
-                        <div>
-                            <dt>Email address</dt>
-                            <dd>{{ user.email|default:"Not provided" }}</dd>
-                        </div>
-                        <div>
-                            <dt>Access</dt>
-                            <dd>{{ access_label }}</dd>
-                        </div>
-                        <div>
-                            <dt>Last sign-in</dt>
-                            <dd>
-                                {{ user.last_login|date:"d M Y, H:i"|default:"Not recorded" }}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Member since</dt>
-                            <dd>{{ user.date_joined|date:"d M Y" }}</dd>
-                        </div>
-                    </dl>
-                </section>
-            </div>
-
-            <footer class="page-footer">
-                <span>Inventory Workspace</span>
-                <span>Organized stock. Clear decisions.</span>
-            </footer>
-        </main>
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">YOUR DAILY PERSPECTIVE</span>
+        <h1>Workspace overview</h1>
+        <p class="muted">Welcome back, {{ display_name }}.</p>
     </div>
+
+    {% if perms.inventory.view_product and perms.inventory.add_product %}
+        <a class="button button-primary" href="{% url 'product-create' %}">
+            + Add product
+        </a>
+    {% endif %}
+</section>
+
+{% if perms.inventory.view_product %}
+    <section class="metric-grid" aria-label="Catalog totals">
+        <article class="metric-card">
+            <span>Total products</span>
+            <strong>{{ catalog_totals.total }}</strong>
+            <small>All catalog records</small>
+        </article>
+        <article class="metric-card">
+            <span>Active products</span>
+            <strong>{{ catalog_totals.active }}</strong>
+            <small>Current catalog</small>
+        </article>
+        <article class="metric-card">
+            <span>Archived products</span>
+            <strong>{{ catalog_totals.archived }}</strong>
+            <small>Preserved for reference</small>
+        </article>
+    </section>
+{% endif %}
+
+<div class="overview-grid">
+    <section class="panel">
+        <div class="panel-heading">
+            <div>
+                <span class="eyebrow">CATALOG</span>
+                <h2>Recently updated</h2>
+            </div>
+            {% if perms.inventory.view_product %}
+                <a class="text-link" href="{% url 'product-list' %}">View catalog →</a>
+            {% endif %}
+        </div>
+
+        {% if recent_products %}
+            <ul class="recent-products">
+                {% for product in recent_products %}
+                    <li>
+                        <div>
+                            <strong>{{ product.name }}</strong>
+                            <small>{{ product.sku }}</small>
+                        </div>
+                        <span class="catalog-badge {% if product.is_active %}badge-active{% endif %}">
+                            {{ product.is_active|yesno:"Active,Archived" }}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon" aria-hidden="true">▦</div>
+                <h3>Your inventory starts here.</h3>
+                {% if perms.inventory.view_product %}
+                    <p>Add your first product to begin organizing your catalog.</p>
+                {% else %}
+                    <p>Contact your administrator to request catalog access.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="panel" id="account">
+        <div class="panel-heading">
+            <div>
+                <span class="eyebrow">PROFILE</span>
+                <h2>Your account</h2>
+            </div>
+            <span class="avatar avatar-light">{{ display_name|first|upper }}</span>
+        </div>
+
+        <dl class="account-details">
+            <div><dt>Username</dt><dd>{{ user.username }}</dd></div>
+            <div><dt>Email address</dt><dd>{{ user.email|default:"Not provided" }}</dd></div>
+            <div><dt>Access</dt><dd>{{ access_label }}</dd></div>
+            <div>
+                <dt>Last sign-in</dt>
+                <dd>{{ user.last_login|date:"d M Y, H:i"|default:"Not recorded" }}</dd>
+            </div>
+            <div><dt>Member since</dt><dd>{{ user.date_joined|date:"d M Y" }}</dd></div>
+        </dl>
+    </section>
 </div>
 {% endblock %}

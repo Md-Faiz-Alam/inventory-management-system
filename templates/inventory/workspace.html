@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/catalog.css' %}">
+{% endblock %}
+
+{% block body %}
+<div class="workspace">
+    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+        <a class="brand" href="{% url 'overview' %}">
+            <span class="brand-mark" aria-hidden="true">I</span>
+            <span>Inventory<span class="brand-subtitle">WORKSPACE</span></span>
+        </a>
+
+        <span class="nav-label">WORKSPACE</span>
+
+        <nav class="navigation" aria-label="Main">
+            <a
+                class="nav-link {% if active_page == 'overview' %}is-active{% endif %}"
+                href="{% url 'overview' %}"
+                {% if active_page == 'overview' %}aria-current="page"{% endif %}
+            >
+                <span class="nav-symbol" aria-hidden="true">◈</span>
+                Overview
+            </a>
+
+            {% if perms.inventory.view_product %}
+                <a
+                    class="nav-link {% if active_page == 'products' %}is-active{% endif %}"
+                    href="{% url 'product-list' %}"
+                    {% if active_page == 'products' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">▦</span>
+                    Products
+                </a>
+            {% endif %}
+
+            <a class="nav-link" href="{% url 'overview' %}#account">
+                <span class="nav-symbol" aria-hidden="true">◎</span>
+                My account
+            </a>
+
+            {% if user.is_staff %}
+                <a class="nav-link" href="{% url 'admin:index' %}">
+                    <span class="nav-symbol" aria-hidden="true">⚙</span>
+                    Administration
+                </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="sidebar-user">
+                <span class="avatar">{{ display_name|first|upper }}</span>
+                <div class="user-summary">
+                    <strong>{{ display_name }}</strong>
+                    <small>{{ access_label }}</small>
+                </div>
+            </div>
+
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button class="sidebar-logout" type="submit">Sign out →</button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="workspace-main">
+        <header class="topbar">
+            <div class="topbar-heading">
+                <button
+                    class="button button-quiet mobile-menu"
+                    type="button"
+                    data-menu-toggle
+                    aria-controls="sidebar"
+                    aria-expanded="false"
+                    hidden
+                >Menu</button>
+
+                <span class="breadcrumb">
+                    Workspace <span>/</span>
+                    <strong>{% block breadcrumb %}Overview{% endblock %}</strong>
+                </span>
+            </div>
+
+            <div class="topbar-actions">
+                <span class="today">{% now "D, d M Y" %}</span>
+                <button class="button button-quiet" type="button" data-theme-toggle>
+                    Switch theme
+                </button>
+            </div>
+        </header>
+
+        <main class="page-content" id="main-content">
+            {% if messages %}
+                <div class="message-stack" aria-live="polite">
+                    {% for message in messages %}
+                        <div class="catalog-notice" role="status">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block workspace_content %}{% endblock %}
+
+            <footer class="page-footer">
+                <span>Inventory Workspace</span>
+                <span>Organized stock. Clear decisions.</span>
+            </footer>
+        </main>
+    </div>
+</div>
+{% endblock %}

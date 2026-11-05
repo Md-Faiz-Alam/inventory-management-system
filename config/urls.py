@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
-from inventory.views import overview
+from inventory import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -23,5 +23,17 @@ urlpatterns = [
         ),
         name="logout",
     ),
-    path("", overview, name="overview"),
+    path("", views.overview, name="overview"),
+    path("products/", views.product_list, name="product-list"),
+    path("products/new/", views.product_create, name="product-create"),
+    path(
+        "products/<int:pk>/edit/",
+        views.product_update,
+        name="product-update",
+    ),
+    path(
+        "products/<int:pk>/status/",
+        views.product_status,
+        name="product-status",
+    ),
 ]
