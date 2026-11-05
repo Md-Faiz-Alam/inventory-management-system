@@ -1,4 +1,4 @@
-"""Settings for local development."""
+"""Settings for local development with PostgreSQL."""
 
 import os
 from pathlib import Path
@@ -10,12 +10,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "").strip()
 
-if not SECRET_KEY:
-    raise ImproperlyConfigured(
-        "DJANGO_SECRET_KEY must be configured in the environment or .env file."
-    )
+def required_environment(name: str) -> str:
+    """Read a required environment variable without exposing its value."""
+    value = os.environ.get(name, "").strip()
+
+    if not value:
+        raise ImproperlyConfigured(
+            f"{name} must be configured in the environment or .env file."
+        )
+
+    return value
+
+
+SECRET_KEY = required_environment("DJANGO_SECRET_KEY")
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 
@@ -70,8 +78,16 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": required_environment("POSTGRES_DB"),
+        "USER": required_environment("POSTGRES_USER"),
+        "PASSWORD": required_environment("POSTGRES_PASSWORD"),
+        "HOST": os.environ.get("POSTGRES_HOST", "127.0.0.1"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5433"),
+        "CONN_MAX_AGE": 0,
+        "OPTIONS": {
+            "connect_timeout": 5,
+        },
     }
 }
 
