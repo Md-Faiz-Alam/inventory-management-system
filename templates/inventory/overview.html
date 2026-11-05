@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Overview · Inventory Workspace{% endblock %}
+
+{% block body %}
+<div class="workspace">
+    <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
+        <a class="brand" href="{% url 'overview' %}">
+            <span class="brand-mark" aria-hidden="true">I</span>
+            <span>Inventory<span class="brand-subtitle">WORKSPACE</span></span>
+        </a>
+
+        <span class="nav-label">WORKSPACE</span>
+
+        <nav class="navigation" aria-label="Main">
+            <a
+                class="nav-link is-active"
+                href="{% url 'overview' %}"
+                aria-current="page"
+            >
+                <span class="nav-symbol" aria-hidden="true">◈</span>
+                Overview
+            </a>
+
+            <a class="nav-link" href="#account">
+                <span class="nav-symbol" aria-hidden="true">◎</span>
+                My account
+            </a>
+
+            {% if user.is_staff %}
+                <a class="nav-link" href="{% url 'admin:index' %}">
+                    <span class="nav-symbol" aria-hidden="true">⚙</span>
+                    Administration
+                </a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="sidebar-user">
+                <span class="avatar">{{ display_name|first|upper }}</span>
+                <div class="user-summary">
+                    <strong>{{ display_name }}</strong>
+                    <small>{{ access_label }}</small>
+                </div>
+            </div>
+
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button class="sidebar-logout" type="submit">
+                    Sign out →
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="workspace-main">
+        <header class="topbar">
+            <div class="topbar-heading">
+                <button
+                    class="button button-quiet mobile-menu"
+                    type="button"
+                    data-menu-toggle
+                    aria-controls="sidebar"
+                    aria-expanded="false"
+                    hidden
+                >Menu</button>
+
+                <span class="breadcrumb">
+                    Workspace <span>/</span> <strong>Overview</strong>
+                </span>
+            </div>
+
+            <div class="topbar-actions">
+                <span class="today">{% now "D, d M Y" %}</span>
+                <button
+                    class="button button-quiet"
+                    type="button"
+                    data-theme-toggle
+                >Switch theme</button>
+            </div>
+        </header>
+
+        <main class="page-content" id="main-content">
+            <section class="page-heading">
+                <div>
+                    <span class="eyebrow">YOUR DAILY PERSPECTIVE</span>
+                    <h1>Workspace overview</h1>
+                    <p class="muted">
+                        Welcome back, {{ display_name }}.
+                        Here is your workspace.
+                    </p>
+                </div>
+
+                <span class="status-pill">
+                    <span aria-hidden="true"></span>
+                    Signed in
+                </span>
+            </section>
+
+            <section class="welcome-panel" aria-labelledby="welcome-title">
+                <div class="welcome-copy">
+                    <span class="eyebrow">A PLACE FOR EVERY PRODUCT</span>
+                    <h2 id="welcome-title">Less guesswork.<br>More control.</h2>
+                    <p>
+                        Keep your inventory organized and give every
+                        stock movement a clear history.
+                    </p>
+
+                    <a class="button button-light" href="#inventory-status">
+                        View inventory status <span aria-hidden="true">↓</span>
+                    </a>
+                </div>
+
+                <div class="warehouse-art" aria-hidden="true">
+                    <span class="art-orbit"></span>
+                    <span class="art-box art-box-one"></span>
+                    <span class="art-box art-box-two"></span>
+                    <span class="art-box art-box-three"></span>
+                    <span class="art-caption">EVERY MOVEMENT MATTERS</span>
+                </div>
+            </section>
+
+            <div class="overview-grid">
+                <section class="panel inventory-panel" id="inventory-status">
+                    <div class="panel-heading">
+                        <div>
+                            <span class="eyebrow">INVENTORY</span>
+                            <h2>A clear starting point</h2>
+                        </div>
+                        <span class="tag">Getting started</span>
+                    </div>
+
+                    <div class="empty-state">
+                        <div class="empty-icon" aria-hidden="true">▦</div>
+                        <h3>Your inventory starts here.</h3>
+                        <p>
+                            Product management is coming next.
+                            Your catalog, stock levels, and movement history
+                            will appear here as the workspace is set up.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="panel account-panel" id="account">
+                    <div class="panel-heading">
+                        <div>
+                            <span class="eyebrow">PROFILE</span>
+                            <h2>Your account</h2>
+                        </div>
+
+                        <span class="avatar avatar-light">
+                            {{ display_name|first|upper }}
+                        </span>
+                    </div>
+
+                    <dl class="account-details">
+                        <div>
+                            <dt>Username</dt>
+                            <dd>{{ user.username }}</dd>
+                        </div>
+                        <div>
+                            <dt>Email address</dt>
+                            <dd>{{ user.email|default:"Not provided" }}</dd>
+                        </div>
+                        <div>
+                            <dt>Access</dt>
+                            <dd>{{ access_label }}</dd>
+                        </div>
+                        <div>
+                            <dt>Last sign-in</dt>
+                            <dd>
+                                {{ user.last_login|date:"d M Y, H:i"|default:"Not recorded" }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Member since</dt>
+                            <dd>{{ user.date_joined|date:"d M Y" }}</dd>
+                        </div>
+                    </dl>
+                </section>
+            </div>
+
+            <footer class="page-footer">
+                <span>Inventory Workspace</span>
+                <span>Organized stock. Clear decisions.</span>
+            </footer>
+        </main>
+    </div>
+</div>
+{% endblock %}

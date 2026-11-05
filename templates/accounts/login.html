@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Sign in · Inventory Workspace{% endblock %}
+
+{% block body %}
+<div class="auth-layout">
+    <aside class="auth-story">
+        <a class="brand" href="{% url 'overview' %}">
+            <span class="brand-mark" aria-hidden="true">I</span>
+            <span>Inventory<span class="brand-subtitle">WORKSPACE</span></span>
+        </a>
+
+        <div class="story-content">
+            <span class="eyebrow">CLARITY IN EVERY MOVEMENT</span>
+            <h1>A clearer view.<br>A better flow.</h1>
+            <p>
+                Give every product a place and every stock movement
+                a clear record.
+            </p>
+
+            <div class="flow-art" aria-hidden="true">
+                <div class="flow-line"></div>
+                <div class="flow-step">
+                    <span class="flow-dot"></span>
+                    <div><strong>Receive</strong><small>Know what comes in</small></div>
+                </div>
+                <div class="flow-step">
+                    <span class="flow-dot"></span>
+                    <div><strong>Organize</strong><small>Keep everything in view</small></div>
+                </div>
+                <div class="flow-step">
+                    <span class="flow-dot"></span>
+                    <div><strong>Move</strong><small>Keep a record of every change</small></div>
+                </div>
+            </div>
+        </div>
+
+        <span class="story-footer">Inventory management, with a clear perspective.</span>
+    </aside>
+
+    <main class="auth-main" id="main-content">
+        <div class="auth-toolbar">
+            <button class="button button-quiet" type="button" data-theme-toggle>
+                Switch theme
+            </button>
+        </div>
+
+        <section class="auth-card" aria-labelledby="login-heading">
+            <span class="eyebrow">YOUR WORKSPACE AWAITS</span>
+            <h2 id="login-heading">Welcome back.</h2>
+            <p class="muted">Sign in to your inventory workspace.</p>
+
+            {% if form.errors %}
+                <div class="notice notice-error" role="alert">
+                    Sign-in failed. Check your username and password.
+                </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'login' %}" class="auth-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <div class="field">
+                    <label for="id_username">Username</label>
+                    <input
+                        id="id_username"
+                        name="username"
+                        type="text"
+                        value="{{ form.username.value|default_if_none:'' }}"
+                        autocomplete="username"
+                        maxlength="150"
+                        required
+                        autofocus
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="id_password">Password</label>
+                    <div class="password-control">
+                        <input
+                            id="id_password"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            data-password-toggle
+                            aria-controls="id_password"
+                            aria-pressed="false"
+                            hidden
+                        >Show</button>
+                    </div>
+                </div>
+
+                <button class="button button-primary button-full" type="submit">
+                    Sign in to workspace <span aria-hidden="true">→</span>
+                </button>
+            </form>
+
+            <p class="auth-help">
+                Need access? Contact your workspace administrator.
+            </p>
+        </section>
+
+        <span class="auth-footer">Inventory Workspace · {% now "Y" %}</span>
+    </main>
+</div>
+{% endblock %}
