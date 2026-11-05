@@ -1,15 +1,32 @@
-"""Tests for authentication and the product catalog."""
+"""Tests for authentication, products, and transactional stock operations."""
 
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
+from threading import Barrier
+from unittest.mock import patch
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-from django.db import IntegrityError, transaction
-from django.test import Client, TestCase
+from django.contrib.auth.models import AnonymousUser, Permission
+from django.core.exceptions import PermissionDenied
+from django.db import (
+    DatabaseError,
+    IntegrityError,
+    close_old_connections,
+    connection,
+    transaction,
+)
+from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 
 from .forms import ProductForm
-from .models import Product
+from .models import (
+    MAX_STOCK_QUANTITY,
+    Product,
+    StockBalance,
+    StockMovement,
+)
+from .services import StockError, record_stock_movement
 
 
 class WorkspaceTests(TestCase):
@@ -351,3 +368,462 @@ class ProductCatalogTests(TestCase):
             reverse("product-update", args=[999999])
         )
         self.assertEqual(response.status_code, 404)
+
+
+class StockEngineTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.actor = get_user_model().objects.create_superuser(
+            username="stock-admin",
+            email="stock@example.com",
+            password="Stock-test-password-482!",
+        )
+        cls.product = Product.objects.create(
+            name="Stock Test Product",
+            sku="STOCK-001",
+        )
+
+    def move(self, **overrides):
+        data = {
+            "product_id": self.product.pk,
+            "actor": self.actor,
+            "kind": StockMovement.Kind.RECEIVE,
+            "quantity": 10,
+            "reason": "Delivery received",
+            "operation_id": uuid4(),
+        }
+        data.update(overrides)
+        return record_stock_movement(**data)
+
+    def test_receive_records_balance_actor_and_reason(self):
+        result = self.move(reason="  Delivery received  ")
+
+        self.assertTrue(result.created)
+        self.assertEqual(result.movement.actor_id, self.actor.pk)
+        self.assertEqual(result.movement.reason, "Delivery received")
+        self.assertEqual(result.movement.balance_before, 0)
+        self.assertEqual(result.movement.balance_after, 10)
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            10,
+        )
+
+    def test_issue_reduces_balance(self):
+        self.move()
+        result = self.move(
+            kind=StockMovement.Kind.ISSUE,
+            quantity=4,
+            reason="Customer order",
+        )
+
+        self.assertEqual(result.movement.balance_before, 10)
+        self.assertEqual(result.movement.balance_after, 6)
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            6,
+        )
+
+    def test_insufficient_stock_changes_nothing(self):
+        self.move(quantity=3)
+
+        with self.assertRaises(StockError):
+            self.move(
+                kind=StockMovement.Kind.ISSUE,
+                quantity=4,
+            )
+
+        self.assertEqual(StockMovement.objects.count(), 1)
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            3,
+        )
+
+    def test_invalid_requests_create_no_stock_records(self):
+        cases = [
+            {"quantity": 0},
+            {"quantity": -1},
+            {"quantity": True},
+            {"quantity": 1.5},
+            {"quantity": "2"},
+            {"quantity": MAX_STOCK_QUANTITY + 1},
+            {"reason": ""},
+            {"reason": "   "},
+            {"reason": "x" * 501},
+            {"kind": "unknown"},
+            {"operation_id": "invalid"},
+        ]
+
+        for override in cases:
+            with self.subTest(override=override):
+                with self.assertRaises(StockError):
+                    self.move(**override)
+
+        self.assertFalse(StockBalance.objects.exists())
+        self.assertFalse(StockMovement.objects.exists())
+
+    def test_archived_product_rejects_new_movements(self):
+        Product.objects.filter(pk=self.product.pk).update(is_active=False)
+
+        with self.assertRaises(StockError):
+            self.move()
+
+        self.assertFalse(StockBalance.objects.exists())
+        self.assertFalse(StockMovement.objects.exists())
+
+    def test_anonymous_actor_is_rejected(self):
+        with self.assertRaises(PermissionDenied):
+            self.move(actor=AnonymousUser())
+
+        self.assertFalse(StockMovement.objects.exists())
+
+    def test_inactive_actor_is_rejected(self):
+        self.actor.is_active = False
+
+        try:
+            with self.assertRaises(PermissionDenied):
+                self.move()
+        finally:
+            self.actor.is_active = True
+
+        self.assertFalse(StockMovement.objects.exists())
+
+    def test_receive_permission_does_not_grant_issue_permission(self):
+        receiver = get_user_model().objects.create_user(username="receiver")
+        receiver.user_permissions.add(
+            *Permission.objects.filter(
+                content_type__app_label="inventory",
+                codename__in=["view_product", "receive_stock"],
+            )
+        )
+
+        self.move(actor=receiver, quantity=3)
+
+        with self.assertRaises(PermissionDenied):
+            self.move(
+                actor=receiver,
+                kind=StockMovement.Kind.ISSUE,
+                quantity=1,
+            )
+
+        self.assertEqual(StockMovement.objects.count(), 1)
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            3,
+        )
+
+    def test_duplicate_request_changes_stock_once(self):
+        operation_id = uuid4()
+
+        first = self.move(operation_id=operation_id)
+        second = self.move(operation_id=operation_id)
+
+        self.assertTrue(first.created)
+        self.assertFalse(second.created)
+        self.assertEqual(first.movement.pk, second.movement.pk)
+        self.assertEqual(StockMovement.objects.count(), 1)
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            10,
+        )
+
+    def test_operation_id_cannot_be_reused_for_different_request(self):
+        operation_id = uuid4()
+        other_product = Product.objects.create(
+            name="Other Stock Product",
+            sku="STOCK-002",
+        )
+        self.move(operation_id=operation_id)
+
+        cases = [
+            {"quantity": 9},
+            {"reason": "Different reason"},
+            {"kind": StockMovement.Kind.ISSUE},
+            {"product_id": other_product.pk},
+        ]
+
+        for override in cases:
+            with self.subTest(override=override):
+                with self.assertRaises(StockError):
+                    self.move(operation_id=operation_id, **override)
+
+        self.assertEqual(StockMovement.objects.count(), 1)
+        self.assertFalse(
+            StockBalance.objects.filter(product=other_product).exists()
+        )
+
+    def test_retry_after_archival_returns_original_result(self):
+        operation_id = uuid4()
+        first = self.move(operation_id=operation_id)
+        Product.objects.filter(pk=self.product.pk).update(is_active=False)
+
+        repeated = self.move(operation_id=operation_id)
+
+        self.assertFalse(repeated.created)
+        self.assertEqual(repeated.movement.pk, first.movement.pk)
+        self.assertEqual(StockMovement.objects.count(), 1)
+
+    def test_receipt_cannot_overflow_stock_limit(self):
+        self.move(quantity=MAX_STOCK_QUANTITY)
+
+        with self.assertRaises(StockError):
+            self.move(quantity=1)
+
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            MAX_STOCK_QUANTITY,
+        )
+        self.assertEqual(StockMovement.objects.count(), 1)
+
+    def test_movement_failure_rolls_back_balance_change(self):
+        self.move(quantity=5)
+
+        with patch(
+            "inventory.services.StockMovement.objects.create",
+            side_effect=RuntimeError("Simulated write failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.move(quantity=3)
+
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            5,
+        )
+        self.assertEqual(StockMovement.objects.count(), 1)
+
+    def test_database_rejects_negative_balance(self):
+        self.move()
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                StockBalance.objects.filter(product=self.product).update(
+                    quantity=-1
+                )
+
+    def test_database_rejects_inconsistent_movement(self):
+        result = self.move()
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                StockMovement.objects.filter(
+                    pk=result.movement.pk
+                ).update(balance_after=99)
+
+    def test_product_edit_preserves_stock_balance(self):
+        self.move(quantity=12)
+        self.client.force_login(self.actor)
+
+        response = self.client.post(
+            reverse("product-update", args=[self.product.pk]),
+            {
+                "name": "Renamed Product",
+                "sku": self.product.sku,
+                "category": "Updated category",
+                "description": "",
+                "unit_price": "10.00",
+                "reorder_level": "5",
+            },
+        )
+
+        self.assertRedirects(response, reverse("product-list"))
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            12,
+        )
+
+    def test_movement_history_has_consistent_running_balances(self):
+        self.move(quantity=10)
+        self.move(
+            kind=StockMovement.Kind.ISSUE,
+            quantity=4,
+            reason="Order dispatched",
+        )
+        self.move(quantity=2, reason="Additional delivery")
+
+        balances = list(
+            StockMovement.objects.order_by("pk").values_list(
+                "balance_before",
+                "balance_after",
+            )
+        )
+
+        self.assertEqual(balances, [(0, 10), (10, 6), (6, 8)])
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            8,
+        )
+
+
+class StockConcurrencyTests(TransactionTestCase):
+    """Use independent PostgreSQL connections for competing requests."""
+
+    def setUp(self):
+        self.assertEqual(
+            connection.vendor,
+            "postgresql",
+            "Concurrency tests must run against PostgreSQL.",
+        )
+        self.actor = get_user_model().objects.create_superuser(
+            username="concurrency-admin",
+            email="concurrency@example.com",
+            password="Concurrency-test-password-482!",
+        )
+        self.product = Product.objects.create(
+            name="Concurrent Product",
+            sku="CONCURRENT-001",
+        )
+
+    def run_competing_requests(self, requests):
+        barrier = Barrier(len(requests))
+        actor_id = self.actor.pk
+        product_id = self.product.pk
+
+        def worker(payload):
+            close_old_connections()
+
+            try:
+                actor = get_user_model().objects.get(pk=actor_id)
+
+                with connection.cursor() as cursor:
+                    cursor.execute("SET lock_timeout = '5s'")
+                    cursor.execute("SET statement_timeout = '10s'")
+
+                barrier.wait(timeout=10)
+
+                try:
+                    result = record_stock_movement(
+                        product_id=product_id,
+                        actor=actor,
+                        reason="Concurrent operation",
+                        **payload,
+                    )
+                    return ("ok", result.movement.pk, result.created)
+                except StockError:
+                    return ("rejected", None, False)
+            finally:
+                connection.close()
+
+        with ThreadPoolExecutor(max_workers=len(requests)) as executor:
+            futures = [
+                executor.submit(worker, payload)
+                for payload in requests
+            ]
+            return [future.result(timeout=20) for future in futures]
+
+    def test_competing_issues_cannot_oversell(self):
+        record_stock_movement(
+            product_id=self.product.pk,
+            actor=self.actor,
+            kind=StockMovement.Kind.RECEIVE,
+            quantity=10,
+            reason="Opening receipt",
+            operation_id=uuid4(),
+        )
+
+        results = self.run_competing_requests(
+            [
+                {
+                    "kind": StockMovement.Kind.ISSUE,
+                    "quantity": 7,
+                    "operation_id": uuid4(),
+                },
+                {
+                    "kind": StockMovement.Kind.ISSUE,
+                    "quantity": 7,
+                    "operation_id": uuid4(),
+                },
+            ]
+        )
+
+        self.assertCountEqual(
+            [result[0] for result in results],
+            ["ok", "rejected"],
+        )
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            3,
+        )
+        self.assertEqual(
+            StockMovement.objects.filter(
+                kind=StockMovement.Kind.ISSUE
+            ).count(),
+            1,
+        )
+
+    def test_competing_receipts_do_not_lose_updates(self):
+        results = self.run_competing_requests(
+            [
+                {
+                    "kind": StockMovement.Kind.RECEIVE,
+                    "quantity": 4,
+                    "operation_id": uuid4(),
+                },
+                {
+                    "kind": StockMovement.Kind.RECEIVE,
+                    "quantity": 6,
+                    "operation_id": uuid4(),
+                },
+            ]
+        )
+
+        self.assertEqual([result[0] for result in results], ["ok", "ok"])
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            10,
+        )
+        self.assertEqual(StockMovement.objects.count(), 2)
+
+    def test_competing_duplicate_requests_change_stock_once(self):
+        operation_id = uuid4()
+        payload = {
+            "kind": StockMovement.Kind.RECEIVE,
+            "quantity": 8,
+            "operation_id": operation_id,
+        }
+
+        results = self.run_competing_requests([payload, payload])
+
+        self.assertEqual([result[0] for result in results], ["ok", "ok"])
+        self.assertEqual(results[0][1], results[1][1])
+        self.assertCountEqual(
+            [result[2] for result in results],
+            [True, False],
+        )
+        self.assertEqual(StockMovement.objects.count(), 1)
+        self.assertEqual(
+            StockBalance.objects.get(product=self.product).quantity,
+            8,
+        )
+
+    def test_product_lock_is_held_until_transaction_finishes(self):
+        product_id = self.product.pk
+
+        def competing_lock():
+            close_old_connections()
+
+            try:
+                try:
+                    with transaction.atomic():
+                        Product.objects.select_for_update(
+                            nowait=True
+                        ).get(pk=product_id)
+
+                    return "acquired"
+                except DatabaseError as error:
+                    return getattr(error.__cause__, "sqlstate", None)
+            finally:
+                connection.close()
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            with transaction.atomic():
+                record_stock_movement(
+                    product_id=product_id,
+                    actor=self.actor,
+                    kind=StockMovement.Kind.RECEIVE,
+                    quantity=1,
+                    reason="Lock verification",
+                    operation_id=uuid4(),
+                )
+
+                result = executor.submit(competing_lock).result(timeout=10)
+
+                self.assertEqual(result, "55P03")
