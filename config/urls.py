@@ -2,9 +2,10 @@
 
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.urls import path, reverse_lazy
+from django.urls import include, path, reverse_lazy
 
 from inventory import views
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -50,4 +51,5 @@ urlpatterns = [
         name="stock-issue",
     ),
     path("movements/", views.movement_list, name="movement-list"),
+    path("suppliers/", include("suppliers.urls")),
 ]

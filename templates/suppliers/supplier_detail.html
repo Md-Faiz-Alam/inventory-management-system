@@ -1,0 +1,105 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}{{ supplier.name }} · Inventory Workspace{% endblock %}
+{% block breadcrumb %}Suppliers{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">SUPPLIER DETAILS</span>
+        <h1>{{ supplier.name }}</h1>
+        <p class="muted">{{ supplier.code }}</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'supplier-list' %}">Back to suppliers</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <span class="catalog-badge {% if supplier.is_active %}badge-active{% endif %}">
+        {{ supplier.is_active|yesno:"Active,Archived" }}
+    </span>
+
+    <dl>
+        <dt><strong>Contact person</strong></dt>
+        <dd>{{ supplier.contact_name|default:"Not specified" }}</dd>
+
+        <dt><strong>Email</strong></dt>
+        <dd>{{ supplier.email|default:"Not specified" }}</dd>
+
+        <dt><strong>Phone</strong></dt>
+        <dd>{{ supplier.phone|default:"Not specified" }}</dd>
+
+        <dt><strong>Address</strong></dt>
+        <dd>{{ supplier.address|default:"Not specified"|linebreaksbr }}</dd>
+
+        <dt><strong>Notes</strong></dt>
+        <dd>{{ supplier.notes|default:"No notes"|linebreaksbr }}</dd>
+    </dl>
+
+    {% if perms.suppliers.change_supplier %}
+        <div class="form-actions">
+            <a class="button button-primary" href="{% url 'supplier-update' supplier.pk %}">
+                Edit supplier
+            </a>
+            <a class="button button-quiet" href="{% url 'supplier-status' supplier.pk %}">
+                {{ supplier.is_active|yesno:"Archive,Restore" }} supplier
+            </a>
+        </div>
+    {% endif %}
+</section>
+
+{% if perms.inventory.view_product %}
+    <section class="panel catalog-panel">
+        <div class="catalog-summary">
+            <strong>{{ product_page.paginator.count }} associated product{{ product_page.paginator.count|pluralize }}</strong>
+            <span>Catalog associations; stock is managed separately</span>
+        </div>
+
+        {% if product_page.object_list %}
+            <div class="table-scroll" role="region" aria-label="Supplier products" tabindex="0">
+                <table class="catalog-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in product_page %}
+                            <tr>
+                                <td>
+                                    <strong class="product-name">{{ product.name }}</strong>
+                                    <span class="product-sku">{{ product.sku }}</span>
+                                </td>
+                                <td>{{ product.category|default:"Uncategorized" }}</td>
+                                <td>{{ product.is_active|yesno:"Active,Archived" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if product_page.has_other_pages %}
+                <nav class="catalog-pagination" aria-label="Associated product pages">
+                    {% if product_page.has_previous %}
+                        <a class="button button-quiet" href="?page={{ product_page.previous_page_number }}">
+                            ← Previous
+                        </a>
+                    {% endif %}
+                    <span>Page {{ product_page.number }} of {{ product_page.paginator.num_pages }}</span>
+                    {% if product_page.has_next %}
+                        <a class="button button-quiet" href="?page={{ product_page.next_page_number }}">
+                            Next →
+                        </a>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <h3>No products associated.</h3>
+                <p>Edit this supplier to select products if you have permission.</p>
+            </div>
+        {% endif %}
+    </section>
+{% endif %}
+{% endblock %}
