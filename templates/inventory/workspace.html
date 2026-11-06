@@ -55,6 +55,15 @@
                         Movements
                     </a>
                 {% endif %}
+
+                <a
+                    class="nav-link {% if active_page == 'reports' %}is-active{% endif %}"
+                    href="{% url 'report-stock' %}"
+                    {% if active_page == 'reports' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">▤</span>
+                    Reports
+                </a>
             {% endif %}
 
             {% if perms.suppliers.view_supplier %}

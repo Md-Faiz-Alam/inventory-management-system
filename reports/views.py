@@ -1,0 +1,346 @@
+"""Read-only stock reports and bounded CSV exports."""
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.paginator import Paginator
+from django.db.models import Count, F, Q, Sum
+from django.shortcuts import render
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_http_methods
+
+from inventory.models import StockMovement
+from inventory.views import products_with_stock, workspace_context
+
+from .csv_exports import csv_response
+from .forms import MovementReportForm, StockReportForm
+
+MAX_EXPORT_ROWS = 10_000
+PAGE_SIZE = 25
+
+
+def stock_row(record):
+    quantity = record["on_hand"]
+
+    if quantity == 0:
+        health = "Out of stock"
+    elif quantity <= record["reorder_level"]:
+        health = "Low stock"
+    else:
+        health = "Healthy"
+
+    return [
+        record["sku"],
+        record["name"],
+        record["category"],
+        quantity,
+        record["reorder_level"],
+        health,
+        format(record["unit_price"], ".2f"),
+    ]
+
+
+def movement_row(record):
+    received = record["kind"] == StockMovement.Kind.RECEIVE
+
+    return [
+        timezone.localtime(
+            record["created_at"]
+        ).isoformat(timespec="seconds"),
+        record["product__sku"],
+        record["product__name"],
+        "Stock received" if received else "Stock issued",
+        record["quantity"] if received else -record["quantity"],
+        record["balance_before"],
+        record["balance_after"],
+        record["actor__username"],
+        record["reason"],
+    ]
+
+
+def report_response(
+    request,
+    *,
+    form,
+    records,
+    columns,
+    row_builder,
+    title,
+    description,
+    filename,
+    report_kind,
+    summary,
+):
+    output = request.GET.get("format", "html")
+
+    if output not in {"html", "csv"}:
+        form.add_error(None, "Unsupported report format.")
+
+    if not form.errors and output == "csv":
+        export_records = list(
+            records[: MAX_EXPORT_ROWS + 1]
+        )
+
+        if len(export_records) > MAX_EXPORT_ROWS:
+            form.add_error(
+                None,
+                f"Export exceeds {MAX_EXPORT_ROWS:,} rows. "
+                "Narrow the filters and try again. "
+                "No file was exported.",
+            )
+        else:
+            return csv_response(
+                filename,
+                columns,
+                (
+                    row_builder(record)
+                    for record in export_records
+                ),
+            )
+
+    valid = not form.errors
+
+    if not valid:
+        records = records.none()
+        summary = {}
+
+    page = Paginator(records, PAGE_SIZE).get_page(
+        request.GET.get("page")
+    )
+
+    parameters = request.GET.copy()
+    parameters.pop("page", None)
+    parameters.pop("format", None)
+
+    export_parameters = parameters.copy()
+    export_parameters["format"] = "csv"
+
+    context = workspace_context(request)
+    context.update(
+        {
+            "active_page": "reports",
+            "report_kind": report_kind,
+            "page_title": title,
+            "description": description,
+            "filter_form": form,
+            "filters_valid": valid,
+            "columns": columns,
+            "rows": [
+                row_builder(record)
+                for record in page
+            ],
+            "page_obj": page,
+            "summary": summary,
+            "pagination_query": parameters.urlencode(),
+            "export_query": export_parameters.urlencode(),
+            "max_export_rows": MAX_EXPORT_ROWS,
+            "report_timezone": str(
+                timezone.get_current_timezone()
+            ),
+            "generated_at": timezone.now(),
+        }
+    )
+
+    return render(
+        request,
+        "reports/report.html",
+        context,
+        status=200 if valid else 400,
+    )
+
+
+@never_cache
+@login_required(login_url="login")
+@permission_required(
+    "inventory.view_product",
+    raise_exception=True,
+)
+@require_http_methods(["GET"])
+def stock_report(request):
+    form = StockReportForm(request.GET)
+    products = products_with_stock().filter(is_active=True)
+    summary = {}
+
+    if form.is_valid():
+        query = form.cleaned_data["q"]
+        health = form.cleaned_data["health"]
+
+        if query:
+            products = products.filter(
+                Q(name__icontains=query)
+                | Q(sku__icontains=query)
+                | Q(category__icontains=query)
+            )
+
+        if health == "healthy":
+            products = products.filter(
+                on_hand__gt=F("reorder_level")
+            )
+        elif health == "low":
+            products = products.filter(
+                on_hand__gt=0,
+                on_hand__lte=F("reorder_level"),
+            )
+        elif health == "out":
+            products = products.filter(on_hand=0)
+
+        totals = products.aggregate(
+            products=Count("pk"),
+            units=Sum("on_hand", default=0),
+            low=Count(
+                "pk",
+                filter=Q(
+                    on_hand__gt=0,
+                    on_hand__lte=F("reorder_level"),
+                ),
+            ),
+            out=Count("pk", filter=Q(on_hand=0)),
+        )
+
+        summary = {
+            "Products": totals["products"],
+            "Units on hand": totals["units"],
+            "Low stock": totals["low"],
+            "Out of stock": totals["out"],
+        }
+
+    records = products.order_by("name", "pk").values(
+        "sku",
+        "name",
+        "category",
+        "on_hand",
+        "reorder_level",
+        "unit_price",
+    )
+
+    return report_response(
+        request,
+        form=form,
+        records=records,
+        columns=[
+            "SKU",
+            "Product",
+            "Category",
+            "Available",
+            "Reorder level",
+            "Stock level",
+            "Unit price (INR)",
+        ],
+        row_builder=stock_row,
+        title="Current stock report",
+        description=(
+            "Active products and current balances. "
+            "Unit prices are current catalog prices, "
+            "not historical purchase costs."
+        ),
+        filename="stock-report.csv",
+        report_kind="stock",
+        summary=summary,
+    )
+
+
+@never_cache
+@login_required(login_url="login")
+@permission_required(
+    [
+        "inventory.view_product",
+        "inventory.view_stockmovement",
+    ],
+    raise_exception=True,
+)
+@require_http_methods(["GET"])
+def movement_report(request):
+    form = MovementReportForm(request.GET)
+    movements = StockMovement.objects.all()
+    summary = {}
+
+    if form.is_valid():
+        query = form.cleaned_data["q"]
+        kind = form.cleaned_data["kind"]
+        start = form.cleaned_data["start"]
+        end = form.cleaned_data["end"]
+
+        if query:
+            movements = movements.filter(
+                Q(product__name__icontains=query)
+                | Q(product__sku__icontains=query)
+                | Q(reason__icontains=query)
+                | Q(actor__username__icontains=query)
+            )
+
+        if kind:
+            movements = movements.filter(kind=kind)
+
+        if start:
+            movements = movements.filter(
+                created_at__date__gte=start
+            )
+
+        if end:
+            movements = movements.filter(
+                created_at__date__lte=end
+            )
+
+        totals = movements.aggregate(
+            count=Count("pk"),
+            received=Sum(
+                "quantity",
+                filter=Q(kind="receive"),
+                default=0,
+            ),
+            issued=Sum(
+                "quantity",
+                filter=Q(kind="issue"),
+                default=0,
+            ),
+        )
+
+        summary = {
+            "Movements": totals["count"],
+            "Units received": totals["received"],
+            "Units issued": totals["issued"],
+            "Net units": (
+                totals["received"] - totals["issued"]
+            ),
+        }
+
+    records = movements.order_by(
+        "-created_at",
+        "-pk",
+    ).values(
+        "created_at",
+        "product__sku",
+        "product__name",
+        "kind",
+        "quantity",
+        "balance_before",
+        "balance_after",
+        "actor__username",
+        "reason",
+    )
+
+    return report_response(
+        request,
+        form=form,
+        records=records,
+        columns=[
+            "Recorded at (UTC offset included)",
+            "SKU",
+            "Product",
+            "Movement",
+            "Quantity change",
+            "Balance before",
+            "Balance after",
+            "Recorded by",
+            "Reason",
+        ],
+        row_builder=movement_row,
+        title="Stock movement report",
+        description=(
+            "Recorded receipts and issues, including archived products. "
+            "Date filters include both boundary dates "
+            "in the displayed timezone."
+        ),
+        filename="movement-report.csv",
+        report_kind="movements",
+        summary=summary,
+    )

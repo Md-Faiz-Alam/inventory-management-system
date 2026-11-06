@@ -26,7 +26,11 @@ urlpatterns = [
     ),
     path("", views.overview, name="overview"),
     path("products/", views.product_list, name="product-list"),
-    path("products/new/", views.product_create, name="product-create"),
+    path(
+        "products/new/",
+        views.product_create,
+        name="product-create",
+    ),
     path(
         "products/<int:pk>/edit/",
         views.product_update,
@@ -50,6 +54,11 @@ urlpatterns = [
         {"kind": "issue"},
         name="stock-issue",
     ),
-    path("movements/", views.movement_list, name="movement-list"),
+    path(
+        "movements/",
+        views.movement_list,
+        name="movement-list",
+    ),
     path("suppliers/", include("suppliers.urls")),
+    path("reports/", include("reports.urls")),
 ]
