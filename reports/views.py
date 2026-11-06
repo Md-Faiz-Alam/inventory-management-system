@@ -2,7 +2,7 @@
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator
-from django.db.models import Count, F, Q, Sum
+from django.db.models import BigIntegerField, Case, Count, F, Q, Sum, When
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -13,6 +13,7 @@ from inventory.views import products_with_stock, workspace_context
 
 from .csv_exports import csv_response
 from .forms import MovementReportForm, StockReportForm
+from .snapshots import snapshot_page
 
 MAX_EXPORT_ROWS = 10_000
 PAGE_SIZE = 25
@@ -68,7 +69,8 @@ def report_response(
     description,
     filename,
     report_kind,
-    summary,
+    summary_fields,
+    order_by,
 ):
     output = request.GET.get("format", "html")
 
@@ -99,13 +101,17 @@ def report_response(
 
     valid = not form.errors
 
-    if not valid:
-        records = records.none()
+    if valid:
+        page, summary = snapshot_page(
+            records,
+            summary_fields=summary_fields,
+            order_by=order_by,
+            page_number=request.GET.get("page"),
+            page_size=PAGE_SIZE,
+        )
+    else:
+        page = Paginator([], PAGE_SIZE).page(1)
         summary = {}
-
-    page = Paginator(records, PAGE_SIZE).get_page(
-        request.GET.get("page")
-    )
 
     parameters = request.GET.copy()
     parameters.pop("page", None)
@@ -158,7 +164,6 @@ def report_response(
 def stock_report(request):
     form = StockReportForm(request.GET)
     products = products_with_stock().filter(is_active=True)
-    summary = {}
 
     if form.is_valid():
         query = form.cleaned_data["q"]
@@ -182,26 +187,6 @@ def stock_report(request):
             )
         elif health == "out":
             products = products.filter(on_hand=0)
-
-        totals = products.aggregate(
-            products=Count("pk"),
-            units=Sum("on_hand", default=0),
-            low=Count(
-                "pk",
-                filter=Q(
-                    on_hand__gt=0,
-                    on_hand__lte=F("reorder_level"),
-                ),
-            ),
-            out=Count("pk", filter=Q(on_hand=0)),
-        )
-
-        summary = {
-            "Products": totals["products"],
-            "Units on hand": totals["units"],
-            "Low stock": totals["low"],
-            "Out of stock": totals["out"],
-        }
 
     records = products.order_by("name", "pk").values(
         "sku",
@@ -234,7 +219,15 @@ def stock_report(request):
         ),
         filename="stock-report.csv",
         report_kind="stock",
-        summary=summary,
+        summary_fields={
+            "Products": Count("pk"),
+            "Units on hand": Sum("on_hand"),
+            "Low stock": Count(
+                "pk", filter=Q(on_hand__gt=0, on_hand__lte=F("reorder_level"))
+            ),
+            "Out of stock": Count("pk", filter=Q(on_hand=0)),
+        },
+        order_by=("name", "pk"),
     )
 
 
@@ -251,7 +244,6 @@ def stock_report(request):
 def movement_report(request):
     form = MovementReportForm(request.GET)
     movements = StockMovement.objects.all()
-    summary = {}
 
     if form.is_valid():
         query = form.cleaned_data["q"]
@@ -279,29 +271,6 @@ def movement_report(request):
             movements = movements.filter(
                 created_at__date__lte=end
             )
-
-        totals = movements.aggregate(
-            count=Count("pk"),
-            received=Sum(
-                "quantity",
-                filter=Q(kind="receive"),
-                default=0,
-            ),
-            issued=Sum(
-                "quantity",
-                filter=Q(kind="issue"),
-                default=0,
-            ),
-        )
-
-        summary = {
-            "Movements": totals["count"],
-            "Units received": totals["received"],
-            "Units issued": totals["issued"],
-            "Net units": (
-                totals["received"] - totals["issued"]
-            ),
-        }
 
     records = movements.order_by(
         "-created_at",
@@ -342,5 +311,17 @@ def movement_report(request):
         ),
         filename="movement-report.csv",
         report_kind="movements",
-        summary=summary,
+        summary_fields={
+            "Movements": Count("pk"),
+            "Units received": Sum("quantity", filter=Q(kind="receive")),
+            "Units issued": Sum("quantity", filter=Q(kind="issue")),
+            "Net units": Sum(
+                Case(
+                    When(kind="receive", then=F("quantity")),
+                    default=-F("quantity"),
+                    output_field=BigIntegerField(),
+                )
+            ),
+        },
+        order_by=("-created_at", "-pk"),
     )
