@@ -3,6 +3,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/catalog.css' %}">
+<link rel="stylesheet" href="{% static 'css/stock.css' %}">
 {% endblock %}
 
 {% block body %}
@@ -34,6 +35,26 @@
                     <span class="nav-symbol" aria-hidden="true">▦</span>
                     Products
                 </a>
+
+                <a
+                    class="nav-link {% if active_page == 'stock' %}is-active{% endif %}"
+                    href="{% url 'stock-list' %}"
+                    {% if active_page == 'stock' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">⇅</span>
+                    Stock control
+                </a>
+
+                {% if perms.inventory.view_stockmovement %}
+                    <a
+                        class="nav-link {% if active_page == 'movements' %}is-active{% endif %}"
+                        href="{% url 'movement-list' %}"
+                        {% if active_page == 'movements' %}aria-current="page"{% endif %}
+                    >
+                        <span class="nav-symbol" aria-hidden="true">↔</span>
+                        Movements
+                    </a>
+                {% endif %}
             {% endif %}
 
             <a class="nav-link" href="{% url 'overview' %}#account">
@@ -95,7 +116,9 @@
             {% if messages %}
                 <div class="message-stack" aria-live="polite">
                     {% for message in messages %}
-                        <div class="catalog-notice" role="status">{{ message }}</div>
+                        <div class="catalog-notice message-{{ message.tags }}" role="status">
+                            {{ message }}
+                        </div>
                     {% endfor %}
                 </div>
             {% endif %}

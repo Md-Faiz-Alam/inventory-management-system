@@ -36,4 +36,18 @@ urlpatterns = [
         views.product_status,
         name="product-status",
     ),
+    path("stock/", views.stock_list, name="stock-list"),
+    path(
+        "products/<int:pk>/receive/",
+        views.stock_create,
+        {"kind": "receive"},
+        name="stock-receive",
+    ),
+    path(
+        "products/<int:pk>/issue/",
+        views.stock_create,
+        {"kind": "issue"},
+        name="stock-issue",
+    ),
+    path("movements/", views.movement_list, name="movement-list"),
 ]

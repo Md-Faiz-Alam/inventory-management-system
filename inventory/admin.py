@@ -22,13 +22,19 @@ class ProductAdmin(admin.ModelAdmin):
     readonly_fields = ["is_active", "created_at", "updated_at"]
     actions = None
 
+    def save_model(self, request, obj, form, change):
+        if change:
+            obj.save(
+                update_fields=[*ProductForm.Meta.fields, "updated_at"]
+            )
+        else:
+            obj.save()
+
     def has_delete_permission(self, request, obj=None):
         return False
 
 
 class ReadOnlyStockAdmin(admin.ModelAdmin):
-    """Keep stock changes inside the stock transaction service."""
-
     actions = None
 
     def has_add_permission(self, request):

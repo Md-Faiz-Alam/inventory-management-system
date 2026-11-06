@@ -9,32 +9,61 @@
         <h1>Workspace overview</h1>
         <p class="muted">Welcome back, {{ display_name }}.</p>
     </div>
-
-    {% if perms.inventory.view_product and perms.inventory.add_product %}
-        <a class="button button-primary" href="{% url 'product-create' %}">
-            + Add product
+    {% if perms.inventory.view_product %}
+        <a class="button button-primary" href="{% url 'stock-list' %}">
+            Open stock control →
         </a>
     {% endif %}
 </section>
 
 {% if perms.inventory.view_product %}
-    <section class="metric-grid" aria-label="Catalog totals">
-        <article class="metric-card">
-            <span>Total products</span>
-            <strong>{{ catalog_totals.total }}</strong>
-            <small>All catalog records</small>
-        </article>
+    <section class="metric-grid stock-metrics" aria-label="Active inventory totals">
         <article class="metric-card">
             <span>Active products</span>
-            <strong>{{ catalog_totals.active }}</strong>
-            <small>Current catalog</small>
+            <strong>{{ stock_totals.products }}</strong>
+            <small>{{ catalog_totals.total }} total · {{ catalog_totals.archived }} archived</small>
         </article>
         <article class="metric-card">
-            <span>Archived products</span>
-            <strong>{{ catalog_totals.archived }}</strong>
-            <small>Preserved for reference</small>
+            <span>Units on hand</span>
+            <strong>{{ stock_totals.units }}</strong>
+            <small>Across active products</small>
+        </article>
+        <article class="metric-card">
+            <span>Low stock</span>
+            <strong class="stock-warning">{{ stock_totals.low }}</strong>
+            <small>At or below reorder level</small>
+        </article>
+        <article class="metric-card">
+            <span>Out of stock</span>
+            <strong class="stock-danger">{{ stock_totals.out }}</strong>
+            <small>Products with zero units</small>
         </article>
     </section>
+
+    {% if attention_products %}
+        <section class="panel stock-section">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">NEEDS ATTENTION</span>
+                    <h2>Stock to review</h2>
+                </div>
+                <a class="text-link" href="{% url 'stock-list' %}">View stock →</a>
+            </div>
+            <ul class="recent-products">
+                {% for product in attention_products %}
+                    <li>
+                        <div>
+                            <strong>{{ product.name }}</strong>
+                            <small>{{ product.sku }} · Reorder level {{ product.reorder_level }}</small>
+                        </div>
+                        <span class="catalog-badge {% if product.on_hand == 0 %}badge-out{% else %}badge-low{% endif %}">
+                            {{ product.on_hand }} units · {% if product.on_hand == 0 %}Out of stock{% else %}Low stock{% endif %}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
 {% endif %}
 
 <div class="overview-grid">
@@ -42,7 +71,7 @@
         <div class="panel-heading">
             <div>
                 <span class="eyebrow">CATALOG</span>
-                <h2>Recently updated</h2>
+                <h2>Recently updated products</h2>
             </div>
             {% if perms.inventory.view_product %}
                 <a class="text-link" href="{% url 'product-list' %}">View catalog →</a>
@@ -84,7 +113,6 @@
             </div>
             <span class="avatar avatar-light">{{ display_name|first|upper }}</span>
         </div>
-
         <dl class="account-details">
             <div><dt>Username</dt><dd>{{ user.username }}</dd></div>
             <div><dt>Email address</dt><dd>{{ user.email|default:"Not provided" }}</dd></div>
@@ -97,4 +125,29 @@
         </dl>
     </section>
 </div>
+
+{% if recent_movements %}
+    <section class="panel stock-section stock-section-after">
+        <div class="panel-heading">
+            <div>
+                <span class="eyebrow">ACTIVITY</span>
+                <h2>Recent stock movements</h2>
+            </div>
+            <a class="text-link" href="{% url 'movement-list' %}">View history →</a>
+        </div>
+        <ul class="recent-products">
+            {% for movement in recent_movements %}
+                <li>
+                    <div>
+                        <strong>{{ movement.product.name }}</strong>
+                        <small>{{ movement.actor.username }} · {{ movement.created_at|date:"d M, H:i" }}</small>
+                    </div>
+                    <span class="catalog-badge {% if movement.kind == 'receive' %}badge-active{% else %}badge-low{% endif %}">
+                        {% if movement.kind == "receive" %}+{% else %}−{% endif %}{{ movement.quantity }} units
+                    </span>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}
 {% endblock %}

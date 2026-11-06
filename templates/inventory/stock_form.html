@@ -1,0 +1,88 @@
+{% extends "inventory/workspace.html" %}
+{% load static l10n %}
+
+{% block title %}{{ page_title }} · Inventory Workspace{% endblock %}
+{% block breadcrumb %}Stock control{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">RECORD A STOCK MOVEMENT</span>
+        <h1>{{ page_title }}</h1>
+        <p class="muted">{{ product.name }} · {{ product.sku }}</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'stock-list' %}">Back to stock</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <div class="stock-form-summary">
+        <div>
+            <span class="eyebrow">CURRENTLY AVAILABLE</span>
+            <strong>{{ product.on_hand }} <small>units</small></strong>
+        </div>
+        <span class="catalog-badge {% if kind == 'receive' %}badge-active{% else %}badge-low{% endif %}">
+            {% if kind == "receive" %}Stock incoming{% else %}Stock outgoing{% endif %}
+        </span>
+    </div>
+
+    {% if not product.is_active %}
+        <div class="notice notice-error" role="alert">
+            This product is archived. Restore it before recording a new movement.
+        </div>
+    {% endif %}
+
+    <form
+        method="post"
+        class="catalog-form"
+        data-stock-form
+        data-stock-kind="{{ kind }}"
+        data-stock-balance="{{ product.on_hand|unlocalize }}"
+    >
+        {% csrf_token %}
+
+        {% for hidden in form.hidden_fields %}
+            {{ hidden }}
+        {% endfor %}
+
+        {% if form.errors %}
+            <div class="notice notice-error" role="alert">
+                <strong>The movement was not recorded.</strong>
+                {{ form.non_field_errors }}
+                {% for hidden in form.hidden_fields %}
+                    {% for error in hidden.errors %}
+                        <p>Submission reference: {{ error }} Reload this page before trying again.</p>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% for field in form.visible_fields %}
+            <div class="field stock-form-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }} *</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <p class="field-help">{{ field.help_text }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                    <p class="field-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="stock-preview" hidden data-stock-preview aria-live="polite">
+            <span>Estimated balance after this movement</span>
+            <strong data-stock-preview-value></strong>
+            <small>Final availability is checked when you submit.</small>
+        </div>
+
+        <div class="form-actions">
+            {% if product.is_active %}
+                <button class="button button-primary" type="submit">{{ page_title }}</button>
+            {% endif %}
+            <a class="button button-quiet" href="{% url 'stock-list' %}">Cancel</a>
+        </div>
+    </form>
+</section>
+
+<script src="{% static 'js/stock.js' %}" defer></script>
+{% endblock %}

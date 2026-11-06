@@ -15,22 +15,35 @@
     <span class="product-sku">{{ product.sku }}</span>
     <h2>{{ product.name }}</h2>
 
-    {% if product.is_active %}
-        <p class="muted">
-            This product will move out of the active catalog.
-            Its record will remain available, and you can restore it later.
-        </p>
+    {% if product.is_active and product.on_hand > 0 %}
+        <div class="notice notice-error" role="alert">
+            This product still has {{ product.on_hand }} units.
+            Issue the remaining stock before archiving it.
+        </div>
+        <div class="form-actions">
+            {% if perms.inventory.issue_stock %}
+                <a class="button button-primary" href="{% url 'stock-issue' product.pk %}">Issue stock</a>
+            {% endif %}
+            <a class="button button-quiet" href="{% url 'product-list' %}">Back to products</a>
+        </div>
     {% else %}
-        <p class="muted">This product will return to the active catalog.</p>
-    {% endif %}
+        {% if product.is_active %}
+            <p class="muted">
+                This product will move out of the active catalog.
+                Its record and stock history will remain available.
+            </p>
+        {% else %}
+            <p class="muted">This product will return to the active catalog.</p>
+        {% endif %}
 
-    <form method="post" class="form-actions">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="{{ product.is_active|yesno:'archive,restore' }}">
-        <button class="button button-primary" type="submit">
-            {{ product.is_active|yesno:"Archive,Restore" }} product
-        </button>
-        <a class="button button-quiet" href="{% url 'product-list' %}">Cancel</a>
-    </form>
+        <form method="post" class="form-actions">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="{{ product.is_active|yesno:'archive,restore' }}">
+            <button class="button button-primary" type="submit">
+                {{ product.is_active|yesno:"Archive,Restore" }} product
+            </button>
+            <a class="button button-quiet" href="{% url 'product-list' %}">Cancel</a>
+        </form>
+    {% endif %}
 </section>
 {% endblock %}
