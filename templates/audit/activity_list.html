@@ -1,0 +1,45 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Activity log · StockFlow{% endblock %}
+{% block breadcrumb %}Activity log{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">WHO DID WHAT, AND WHEN</span>
+        <h1>Activity log</h1>
+        <p class="muted">Every create, edit, status change, stock operation, order step and sign-in.</p>
+    </div>
+</section>
+
+<section class="panel catalog-panel">
+    <form
+        method="get"
+        class="catalog-filters"
+        role="search"
+        aria-label="Filter activity"
+        hx-get="{% url 'activity' %}"
+        hx-target="#results"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="input changed delay:300ms from:find input[type=search], change from:find select, submit"
+    >
+        <div>
+            <label for="activity-search">Search</label>
+            <input id="activity-search" type="search" name="q" value="{{ query }}" maxlength="100" placeholder="User, message, or record" autocomplete="off">
+        </div>
+        <div>
+            <label for="activity-action">Type</label>
+            <select id="activity-action" name="action">
+                <option value="">All activity</option>
+                {% for value, label in actions %}
+                    <option value="{{ value }}" {% if selected_action == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="button button-primary" type="submit">Apply</button>
+        <a class="button button-quiet" href="{% url 'activity' %}">Reset</a>
+    </form>
+    {% include "audit/_activity_rows.html" %}
+</section>
+{% endblock %}

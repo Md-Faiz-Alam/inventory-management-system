@@ -1,0 +1,28 @@
+{% if history %}
+    <section class="panel">
+        <div class="panel-heading">
+            <div>
+                <span class="eyebrow">AUDIT TRAIL</span>
+                <h2>History</h2>
+            </div>
+            {% if perms.audit.view_auditentry %}
+                <a class="text-link" href="{% url 'activity' %}">Full log →</a>
+            {% endif %}
+        </div>
+        <ul class="timeline">
+            {% for entry in history %}
+                <li>
+                    <strong>{{ entry.message }}</strong>
+                    <small>{{ entry.actor_username|default:"system" }} · {{ entry.created_at|date:"d M Y, H:i" }}</small>
+                    {% if entry.changes %}
+                        <div class="changes">
+                            {% for field, values in entry.changes.items %}
+                                {{ field }}: {{ values.0|default:"—" }} → {{ values.1|default:"—" }}{% if not forloop.last %}<br>{% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}

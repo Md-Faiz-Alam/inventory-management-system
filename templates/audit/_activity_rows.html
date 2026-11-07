@@ -1,0 +1,30 @@
+<div id="results" data-results>
+    <div class="catalog-summary">
+        <strong>{{ page_obj.paginator.count }} entr{{ page_obj.paginator.count|pluralize:"y,ies" }}</strong>
+        <span>Latest first · Times in IST · Read-only</span>
+    </div>
+    {% if page_obj.object_list %}
+        <div class="table-scroll" role="region" aria-label="Activity" tabindex="0">
+            <table class="catalog-table">
+                <thead><tr><th>Time</th><th>User</th><th>Type</th><th>What happened</th><th>Changes</th><th>IP</th></tr></thead>
+                <tbody>
+                    {% for entry in page_obj %}
+                        <tr>
+                            <td class="movement-time">{{ entry.created_at|date:"d M Y" }}<br>{{ entry.created_at|date:"H:i:s" }}</td>
+                            <td>{{ entry.actor_username|default:"—" }}</td>
+                            <td><span class="chip {% if entry.action == 'login_failed' %}chip-danger{% elif entry.action == 'stock' %}chip-success{% elif entry.action == 'order' %}chip-warning{% elif entry.action == 'create' or entry.action == 'update' %}chip-info{% endif %}">{{ entry.get_action_display }}</span></td>
+                            <td class="movement-reason">{{ entry.message }}{% if entry.content_type %}<span class="product-sku">{{ entry.content_type.name|capfirst }} #{{ entry.object_id }}</span>{% endif %}</td>
+                            <td class="movement-reason" style="font-size:11px">
+                                {% for field, values in entry.changes.items %}<div><strong>{{ field }}</strong>: {{ values.0|default:"—" }} → {{ values.1|default:"—" }}</div>{% empty %}—{% endfor %}
+                            </td>
+                            <td class="product-sku">{{ entry.ip_address|default:"—" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "includes/pagination.html" with label="Activity" %}
+    {% else %}
+        <div class="empty-state"><div class="empty-icon" aria-hidden="true">≋</div><h3>No activity matches.</h3></div>
+    {% endif %}
+</div>
