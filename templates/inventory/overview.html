@@ -1,44 +1,124 @@
 {% extends "inventory/workspace.html" %}
+{% load static humanize %}
 
-{% block title %}Overview · Inventory Workspace{% endblock %}
+{% block title %}Dashboard · StockFlow{% endblock %}
+
+{% block page_head %}
+{% if perms.inventory.view_product %}
+    <script src="{% static 'vendor/chart.umd.min.js' %}" defer></script>
+    <script src="{% static 'js/dashboard.js' %}" defer></script>
+{% endif %}
+{% endblock %}
 
 {% block workspace_content %}
 <section class="page-heading">
     <div>
         <span class="eyebrow">YOUR DAILY PERSPECTIVE</span>
-        <h1>Workspace overview</h1>
-        <p class="muted">Welcome back, {{ display_name }}.</p>
+        <h1>Dashboard</h1>
+        <p class="muted">Welcome back, {{ display_name }}. Here is how your inventory looks right now.</p>
     </div>
-    {% if perms.inventory.view_product %}
-        <a class="button button-primary" href="{% url 'stock-list' %}">
-            Open stock control →
-        </a>
-    {% endif %}
+    <div class="action-bar" style="margin-top:0">
+        {% if perms.sales.add_salesorder %}
+            <a class="button button-quiet" href="{% url 'order-create' %}">+ Sales order</a>
+        {% endif %}
+        {% if perms.inventory.add_purchaseorder %}
+            <a class="button button-quiet" href="{% url 'po-create' %}">+ Purchase order</a>
+        {% endif %}
+        {% if perms.inventory.view_product %}
+            <a class="button button-primary" href="{% url 'stock-list' %}">
+                Open stock control →
+            </a>
+        {% endif %}
+    </div>
 </section>
 
 {% if perms.inventory.view_product %}
-    <section class="metric-grid stock-metrics" aria-label="Active inventory totals">
-        <article class="metric-card">
+    <section class="kpi-grid" aria-label="Key figures">
+        <a class="kpi-card" href="{% url 'report-stock' %}">
+            <span>Stock value</span>
+            <strong class="money">₹{{ stock_value|floatformat:"0"|intcomma }}</strong>
+            <small>At current catalog prices</small>
+        </a>
+        <a class="kpi-card kpi-info" href="{% url 'product-list' %}">
             <span>Active products</span>
             <strong>{{ stock_totals.products }}</strong>
             <small>{{ catalog_totals.total }} total · {{ catalog_totals.archived }} archived</small>
-        </article>
-        <article class="metric-card">
+        </a>
+        <a class="kpi-card" href="{% url 'stock-list' %}">
             <span>Units on hand</span>
-            <strong>{{ stock_totals.units }}</strong>
+            <strong>{{ stock_totals.units|intcomma }}</strong>
             <small>Across active products</small>
-        </article>
-        <article class="metric-card">
+        </a>
+        <a class="kpi-card kpi-warning" href="{% url 'stock-list' %}?health=low">
             <span>Low stock</span>
             <strong class="stock-warning">{{ stock_totals.low }}</strong>
             <small>At or below reorder level</small>
-        </article>
-        <article class="metric-card">
+        </a>
+        <a class="kpi-card kpi-danger" href="{% url 'stock-list' %}?health=out">
             <span>Out of stock</span>
             <strong class="stock-danger">{{ stock_totals.out }}</strong>
             <small>Products with zero units</small>
-        </article>
+        </a>
+        {% if perms.inventory.view_purchaseorder %}
+            <a class="kpi-card kpi-info" href="{% url 'po-list' %}">
+                <span>Open purchase orders</span>
+                <strong>{{ open_purchase_orders }}</strong>
+                <small>Awaiting delivery</small>
+            </a>
+        {% endif %}
+        {% if perms.sales.view_salesorder %}
+            <a class="kpi-card" href="{% url 'order-list' %}?status=fulfilled">
+                <span>Sales this month</span>
+                <strong class="money">₹{{ sales_this_month|floatformat:"0"|intcomma }}</strong>
+                <small>{{ orders_to_fulfil }} order{{ orders_to_fulfil|pluralize }} waiting to ship</small>
+            </a>
+        {% endif %}
     </section>
+
+    <section class="chart-grid">
+        {% if perms.inventory.view_stockmovement %}
+            <article class="panel chart-panel">
+                <div class="panel-heading">
+                    <div>
+                        <span class="eyebrow">LAST 30 DAYS</span>
+                        <h2>Stock in vs. out</h2>
+                    </div>
+                    <a class="text-link" href="{% url 'report-movements' %}">Movement report →</a>
+                </div>
+                <div class="chart-box"><canvas id="chart-movements" aria-label="Units received and issued per day" role="img"></canvas></div>
+            </article>
+        {% endif %}
+        <article class="panel chart-panel">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">HEALTH</span>
+                    <h2>Stock levels</h2>
+                </div>
+            </div>
+            <div class="chart-box"><canvas id="chart-health" aria-label="Products by stock level" role="img"></canvas></div>
+        </article>
+        <article class="panel chart-panel">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">WHERE THE MONEY SITS</span>
+                    <h2>Stock value by category</h2>
+                </div>
+            </div>
+            <div class="chart-box chart-box-small"><canvas id="chart-category" aria-label="Stock value by category" role="img"></canvas></div>
+        </article>
+        {% if perms.inventory.view_stockmovement %}
+            <article class="panel chart-panel">
+                <div class="panel-heading">
+                    <div>
+                        <span class="eyebrow">LAST 30 DAYS</span>
+                        <h2>Fastest-moving products</h2>
+                    </div>
+                </div>
+                <div class="chart-box chart-box-small"><canvas id="chart-top" aria-label="Most issued products" role="img"></canvas></div>
+            </article>
+        {% endif %}
+    </section>
+    <script type="application/json" id="dashboard-config">{"url": "{% url 'dashboard-data' %}"}</script>
 
     {% if attention_products %}
         <section class="panel stock-section">
@@ -56,9 +136,14 @@
                             <strong>{{ product.name }}</strong>
                             <small>{{ product.sku }} · Reorder level {{ product.reorder_level }}</small>
                         </div>
-                        <span class="catalog-badge {% if product.on_hand == 0 %}badge-out{% else %}badge-low{% endif %}">
-                            {{ product.on_hand }} units · {% if product.on_hand == 0 %}Out of stock{% else %}Low stock{% endif %}
-                        </span>
+                        <div class="row-actions">
+                            <span class="catalog-badge {% if product.on_hand == 0 %}badge-out{% else %}badge-low{% endif %}">
+                                {{ product.on_hand }} units · {% if product.on_hand == 0 %}Out of stock{% else %}Low stock{% endif %}
+                            </span>
+                            {% if perms.inventory.add_purchaseorder %}
+                                <a class="text-link" href="{% url 'po-create' %}?product={{ product.pk }}">Create PO</a>
+                            {% endif %}
+                        </div>
                     </li>
                 {% endfor %}
             </ul>
@@ -111,12 +196,12 @@
                 <span class="eyebrow">PROFILE</span>
                 <h2>Your account</h2>
             </div>
-            <span class="avatar avatar-light">{{ display_name|first|upper }}</span>
+            <a class="avatar avatar-light" href="{% url 'profile' %}" aria-label="Open my account">{{ display_name|first|upper }}</a>
         </div>
         <dl class="account-details">
             <div><dt>Username</dt><dd>{{ user.username }}</dd></div>
             <div><dt>Email address</dt><dd>{{ user.email|default:"Not provided" }}</dd></div>
-            <div><dt>Access</dt><dd>{{ access_label }}</dd></div>
+            <div><dt>Role</dt><dd>{{ access_label }}</dd></div>
             <div>
                 <dt>Last sign-in</dt>
                 <dd>{{ user.last_login|date:"d M Y, H:i"|default:"Not recorded" }}</dd>
@@ -126,28 +211,50 @@
     </section>
 </div>
 
-{% if recent_movements %}
-    <section class="panel stock-section stock-section-after">
-        <div class="panel-heading">
-            <div>
-                <span class="eyebrow">ACTIVITY</span>
-                <h2>Recent stock movements</h2>
+<div class="overview-grid stock-section-after">
+    {% if recent_movements %}
+        <section class="panel">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">STOCK</span>
+                    <h2>Recent stock movements</h2>
+                </div>
+                <a class="text-link" href="{% url 'movement-list' %}">View history →</a>
             </div>
-            <a class="text-link" href="{% url 'movement-list' %}">View history →</a>
-        </div>
-        <ul class="recent-products">
-            {% for movement in recent_movements %}
-                <li>
-                    <div>
-                        <strong>{{ movement.product.name }}</strong>
-                        <small>{{ movement.actor.username }} · {{ movement.created_at|date:"d M, H:i" }}</small>
-                    </div>
-                    <span class="catalog-badge {% if movement.kind == 'receive' %}badge-active{% else %}badge-low{% endif %}">
-                        {% if movement.kind == "receive" %}+{% else %}−{% endif %}{{ movement.quantity }} units
-                    </span>
-                </li>
-            {% endfor %}
-        </ul>
-    </section>
-{% endif %}
+            <ul class="recent-products">
+                {% for movement in recent_movements %}
+                    <li>
+                        <div>
+                            <strong>{{ movement.product.name }}</strong>
+                            <small>{{ movement.actor.username }} · {{ movement.created_at|date:"d M, H:i" }}</small>
+                        </div>
+                        <span class="catalog-badge {% if movement.kind == 'receive' %}badge-active{% else %}badge-low{% endif %}">
+                            {% if movement.kind == "receive" %}+{% else %}−{% endif %}{{ movement.quantity }} units
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if recent_activity %}
+        <section class="panel">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">TEAM</span>
+                    <h2>Recent activity</h2>
+                </div>
+                <a class="text-link" href="{% url 'activity' %}">Activity log →</a>
+            </div>
+            <ul class="timeline">
+                {% for entry in recent_activity %}
+                    <li>
+                        <strong>{{ entry.message }}</strong>
+                        <small>{{ entry.actor_username|default:"system" }} · {{ entry.created_at|timesince }} ago</small>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+</div>
 {% endblock %}

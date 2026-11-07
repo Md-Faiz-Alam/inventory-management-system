@@ -1,30 +1,25 @@
 """Application URL configuration."""
 
 from django.contrib import admin
-from django.contrib.auth import views as auth_views
-from django.urls import include, path, reverse_lazy
+from django.http import HttpResponse
+from django.urls import include, path
 
-from inventory import views
+from audit import views as audit_views
+from inventory import dashboard, purchasing, views
+
+
+def healthz(request):
+    return HttpResponse("ok", content_type="text/plain")
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path(
-        "accounts/login/",
-        auth_views.LoginView.as_view(
-            template_name="accounts/login.html",
-            next_page=reverse_lazy("overview"),
-        ),
-        name="login",
-    ),
-    path(
-        "accounts/logout/",
-        auth_views.LogoutView.as_view(
-            next_page=reverse_lazy("login"),
-        ),
-        name="logout",
-    ),
+    path("healthz/", healthz, name="healthz"),
+    path("accounts/", include("accounts.urls")),
+    path("api/", include("api.urls")),
     path("", views.overview, name="overview"),
+    path("dashboard/data/", dashboard.dashboard_data, name="dashboard-data"),
+    path("alerts/", dashboard.alerts, name="alerts"),
     path("products/", views.product_list, name="product-list"),
     path(
         "products/new/",
@@ -55,10 +50,36 @@ urlpatterns = [
         name="stock-issue",
     ),
     path(
+        "products/<int:pk>/stocktake/",
+        purchasing.stocktake,
+        name="stocktake",
+    ),
+    path(
         "movements/",
         views.movement_list,
         name="movement-list",
     ),
+    path(
+        "movements/<int:pk>/reverse/",
+        purchasing.movement_reverse,
+        name="movement-reverse",
+    ),
+    path("purchase-orders/", purchasing.po_list, name="po-list"),
+    path("purchase-orders/new/", purchasing.po_create, name="po-create"),
+    path("purchase-orders/<int:pk>/", purchasing.po_detail, name="po-detail"),
+    path(
+        "purchase-orders/<int:pk>/receive/",
+        purchasing.po_receive,
+        name="po-receive",
+    ),
+    path("purchase-orders/<int:pk>/pdf/", purchasing.po_pdf, name="po-pdf"),
+    path(
+        "purchase-orders/<int:pk>/cancel/",
+        purchasing.po_cancel,
+        name="po-cancel",
+    ),
+    path("activity/", audit_views.activity_list, name="activity"),
     path("suppliers/", include("suppliers.urls")),
     path("reports/", include("reports.urls")),
+    path("", include("sales.urls")),
 ]

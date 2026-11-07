@@ -1,5 +1,6 @@
 """Workspace, catalog, and stock operation views."""
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
@@ -13,6 +14,12 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
+from accounts.roles import guest_account, is_guest, role_of
+from audit.log import diff, history_for, record, snapshot
+from audit.models import AuditEntry
+from config.htmx import render_list
+
+from .dashboard import dashboard_kpis, landing_figures
 from .forms import MovementFilterForm, ProductForm, StockMovementForm
 from .models import Product, StockBalance, StockMovement
 from .services import StockError, record_stock_movement
@@ -20,18 +27,20 @@ from .services import StockError, record_stock_movement
 
 def workspace_context(request) -> dict[str, object]:
     user = request.user
+    access_label = role_of(user)
 
-    if user.is_superuser:
-        access_label = "Administrator"
-    elif user.is_staff:
+    if access_label == "Member" and user.is_staff:
         access_label = "Administration access"
-    else:
-        access_label = "Member"
 
     return {
         "display_name": user.first_name or user.get_username(),
-        "access_label": access_label,
+        "access_label": "Guest (read-only)" if is_guest(user) else access_label,
+        "is_guest": is_guest(user),
+        "demo_roles": bool(getattr(settings, "DEMO_LOGINS", [])),
     }
+
+
+PRODUCT_AUDIT_FIELDS = ProductForm.Meta.fields
 
 
 def products_with_stock():
@@ -74,6 +83,9 @@ def save_product_form(form):
             product = form.save(commit=False)
 
             if product.pk:
+                current = get_object_or_404(Product.objects.select_for_update(), pk=product.pk)
+                if not form.matches_current(current):
+                    return None
                 product.save(
                     update_fields=[*ProductForm.Meta.fields, "updated_at"]
                 )
@@ -100,10 +112,21 @@ def save_product_form(form):
 
 
 @never_cache
-@login_required(login_url="login")
 def overview(request):
+    if not request.user.is_authenticated:
+        return render(
+            request,
+            "landing.html",
+            {
+                "demo_accounts": getattr(settings, "DEMO_LOGINS", []),
+                "guest_access": guest_account() is not None,
+                "showcase": landing_figures(),
+            },
+        )
+
     context = workspace_context(request)
     context["active_page"] = "overview"
+    context.update(dashboard_kpis(request.user))
 
     if request.user.has_perm("inventory.view_product"):
         context["catalog_totals"] = Product.objects.aggregate(
@@ -177,7 +200,12 @@ def product_list(request):
             "pagination_query": pagination_query(request),
         }
     )
-    return render(request, "inventory/product_list.html", context)
+    return render_list(
+        request,
+        "inventory/product_list.html",
+        "inventory/_product_rows.html",
+        context,
+    )
 
 
 @never_cache
@@ -194,6 +222,12 @@ def product_create(request):
         product = save_product_form(form)
 
         if product is not None:
+            record(
+                request,
+                AuditEntry.Action.CREATE,
+                f"Created product {product.name}",
+                obj=product,
+            )
             messages.success(request, f"{product.name} was created.")
             return redirect("product-list")
 
@@ -218,6 +252,7 @@ def product_create(request):
 @require_http_methods(["GET", "POST"])
 def product_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
+    before = snapshot(product, PRODUCT_AUDIT_FIELDS)
     form = ProductForm(
         request.POST if request.method == "POST" else None,
         instance=product,
@@ -227,6 +262,13 @@ def product_update(request, pk):
         saved_product = save_product_form(form)
 
         if saved_product is not None:
+            record(
+                request,
+                AuditEntry.Action.UPDATE,
+                f"Updated product {saved_product.name}",
+                obj=saved_product,
+                changes=diff(before, snapshot(saved_product, PRODUCT_AUDIT_FIELDS)),
+            )
             messages.success(request, f"{saved_product.name} was updated.")
             return redirect("product-list")
 
@@ -237,6 +279,7 @@ def product_update(request, pk):
             "form": form,
             "page_title": "Edit product",
             "submit_label": "Save changes",
+            "history": history_for(product),
         }
     )
     return render(request, "inventory/product_form.html", context)
@@ -282,6 +325,12 @@ def product_status(request, pk):
             )
 
         outcome = "restored" if action == "restore" else "archived"
+        record(
+            request,
+            AuditEntry.Action.STATUS,
+            f"{outcome.title()} product {product.name}",
+            obj=locked_product,
+        )
         messages.success(request, f"{product.name} was {outcome}.")
         return redirect("product-list")
 
@@ -337,7 +386,12 @@ def stock_list(request):
             "pagination_query": pagination_query(request),
         }
     )
-    return render(request, "inventory/stock_list.html", context)
+    return render_list(
+        request,
+        "inventory/stock_list.html",
+        "inventory/_stock_rows.html",
+        context,
+    )
 
 
 @never_cache
@@ -385,6 +439,12 @@ def stock_create(request, pk, kind):
         else:
             if result.created:
                 verb = "Received" if kind == "receive" else "Issued"
+                record(
+                    request,
+                    AuditEntry.Action.STOCK,
+                    f"{verb} {result.movement.quantity} units of {product.name}",
+                    obj=product,
+                )
                 messages.success(
                     request,
                     f"{verb} {result.movement.quantity} units for {product.name}.",
@@ -418,7 +478,15 @@ def stock_create(request, pk, kind):
 )
 def movement_list(request):
     form = MovementFilterForm(request.GET)
-    movements = StockMovement.objects.select_related("product", "actor")
+    movements = StockMovement.objects.select_related(
+        "product",
+        "actor",
+        "purchase_order",
+        "purchase_order__supplier",
+        "reversal_of",
+        "reversal",
+        "sales_line",
+    )
 
     if form.is_valid():
         query = form.cleaned_data["q"]
@@ -448,4 +516,9 @@ def movement_list(request):
             "pagination_query": pagination_query(request),
         }
     )
-    return render(request, "inventory/movement_list.html", context)
+    return render_list(
+        request,
+        "inventory/movement_list.html",
+        "inventory/_movement_rows.html",
+        context,
+    )

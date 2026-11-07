@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}StockFlow · Inventory management for growing businesses{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ui.css' %}">
+<meta name="description" content="StockFlow is a full inventory management system: products, stock control, purchase and sales orders, suppliers, customers, analytics, audit log, PDF invoices and a REST API.">
+{% endblock %}
+
+{% block body %}
+<div class="landing">
+    <section class="hero">
+        <nav class="landing-nav" aria-label="Site">
+            <a class="brand" href="{% url 'overview' %}" style="color:#f3f7fb">
+                <span class="brand-mark" aria-hidden="true">S</span>
+                <span>StockFlow<span class="brand-subtitle">INVENTORY SUITE</span></span>
+            </a>
+            <div class="landing-nav-actions">
+                <a class="button button-quiet" href="{% url 'api-docs' %}">API docs</a>
+                <button class="button button-quiet" type="button" data-theme-toggle>Switch theme</button>
+                <a class="button button-light" href="{% url 'login' %}">Sign in →</a>
+            </div>
+        </nav>
+
+        <div class="hero-inner" id="main-content">
+            <div>
+                <span class="eyebrow">INVENTORY · PURCHASING · SALES · ANALYTICS</span>
+                <h1>Every unit accounted for.<br>Every decision informed.</h1>
+                <p>
+                    StockFlow tracks products from the supplier's truck to the customer's
+                    order: live stock levels, purchase orders, sales fulfilment,
+                    role-based access and a complete audit trail.
+                </p>
+                <div class="hero-actions">
+                    {% if guest_access %}
+                        <form method="post" action="{% url 'guest-login' %}">
+                            {% csrf_token %}
+                            <button class="button button-light" type="submit">Explore as guest →</button>
+                        </form>
+                        {% if demo_accounts %}
+                            <a class="button button-quiet" href="{% url 'login' %}">Try the live demo</a>
+                        {% else %}
+                            <a class="button button-quiet" href="#features">See the features</a>
+                        {% endif %}
+                    {% else %}
+                        <a class="button button-light" href="{% url 'login' %}">Try the live demo →</a>
+                        <a class="button button-quiet" href="#features">Explore features</a>
+                    {% endif %}
+                </div>
+                {% if guest_access %}
+                    <p class="hero-note">No sign-up or password. Look around every page; changes are switched off.</p>
+                {% endif %}
+            </div>
+
+            <div class="hero-card">
+                <span class="eyebrow" style="margin-bottom:12px">LIVE FROM THE DEMO DATABASE</span>
+                <div class="mini-kpis">
+                    <div><small>Active products</small><strong>{{ showcase.products }}</strong></div>
+                    <div><small>Need reordering</small><strong>{{ showcase.low }}</strong></div>
+                    <div><small>Open purchase orders</small><strong>{{ showcase.open_pos }}</strong></div>
+                    <div><small>Stock movements logged</small><strong>{{ showcase.movements }}</strong></div>
+                </div>
+                <div class="hero-bars" aria-hidden="true">
+                    <span style="height:45%"></span><span style="height:30%"></span>
+                    <span style="height:70%"></span><span style="height:50%"></span>
+                    <span style="height:85%"></span><span style="height:40%"></span>
+                    <span style="height:60%"></span><span style="height:75%"></span>
+                    <span style="height:95%"></span><span style="height:55%"></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="landing-section" id="features">
+        <span class="eyebrow">WHAT IT DOES</span>
+        <h2>One workspace for the whole stock lifecycle</h2>
+        <p class="muted">Built with Django and PostgreSQL. Stock is changed only through one locked, audited service.</p>
+
+        <div class="feature-grid">
+            <article class="feature">
+                <div class="feature-icon">◈</div>
+                <h3>Live analytics dashboard</h3>
+                <p>KPI cards, 30-day stock flow, value by category and fastest-moving products, plus a low-stock alert bell.</p>
+            </article>
+            <article class="feature">
+                <div class="feature-icon">⇅</div>
+                <h3>Safe stock control</h3>
+                <p>Receipts, issues, reversals and stocktakes with row locking, duplicate-submit protection and running balances.</p>
+            </article>
+            <article class="feature">
+                <div class="feature-icon">⬇</div>
+                <h3>Purchase orders</h3>
+                <p>Raise POs to suppliers, receive deliveries in parts against them, and track outstanding quantities.</p>
+            </article>
+            <article class="feature">
+                <div class="feature-icon">⬆</div>
+                <h3>Sales orders &amp; invoices</h3>
+                <p>Draft, confirm and fulfil customer orders. Fulfilment issues stock atomically and produces a PDF invoice.</p>
+            </article>
+            <article class="feature">
+                <div class="feature-icon">⚑</div>
+                <h3>Roles &amp; audit log</h3>
+                <p>Admin, Manager and Staff roles, user management, login rate limiting and a searchable who-did-what history.</p>
+            </article>
+            <article class="feature">
+                <div class="feature-icon">{ }</div>
+                <h3>Reports &amp; REST API</h3>
+                <p>Filtered reports as HTML, CSV or PDF, and a documented JSON API with interactive Swagger docs.</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="landing-section" style="padding-top:0">
+        <span class="eyebrow">HOW IT WORKS</span>
+        <h2>From supplier to customer</h2>
+        <ol class="flow-steps">
+            <li>Add products with SKU, price and reorder level.</li>
+            <li>Raise a purchase order to a supplier.</li>
+            <li>Receive the delivery against the PO; stock goes up.</li>
+            <li>Create and confirm a customer sales order.</li>
+            <li>Fulfil it; stock goes down and the invoice is ready.</li>
+            <li>Watch the dashboard, reports and audit log update.</li>
+        </ol>
+    </section>
+
+    {% if demo_accounts %}
+        <section class="landing-section" style="padding-top:0" id="demo">
+            <span class="eyebrow">TRY IT NOW</span>
+            <h2>Demo accounts</h2>
+            <p class="muted">
+                {% if guest_access %}Just looking? Use <strong>Explore as guest</strong> above. To try making changes, sign in with a role below.{% endif %}
+                Data is synthetic and shared by all visitors.
+            </p>
+            <div class="table-scroll">
+                <table class="demo-table">
+                    <thead><tr><th>Role</th><th>Username</th><th>Password</th><th>Can do</th></tr></thead>
+                    <tbody>
+                        {% for account in demo_accounts %}
+                            <tr>
+                                <td><strong>{{ account.role }}</strong></td>
+                                <td><code>{{ account.username }}</code></td>
+                                <td><code>{{ account.password }}</code></td>
+                                <td class="muted">{{ account.summary }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="action-bar"><a class="button button-primary" href="{% url 'login' %}">Sign in to the demo →</a></div>
+        </section>
+    {% endif %}
+
+    <section class="landing-section" style="padding-top:0">
+        <span class="eyebrow">TECHNOLOGY</span>
+        <h2>Built with</h2>
+        <div class="stack-list">
+            <span>Python 3.11</span><span>Django 5.2</span><span>PostgreSQL 17</span>
+            <span>HTMX</span><span>Chart.js</span><span>Django REST Framework</span>
+            <span>OpenAPI / Swagger</span><span>xhtml2pdf</span><span>WhiteNoise</span>
+            <span>Gunicorn</span><span>GitHub Actions CI</span><span>Render + Neon</span>
+        </div>
+    </section>
+
+    <footer class="landing-footer">
+        StockFlow Inventory Suite · BCA Major Project {% now "Y" %} · Md Faiz Alam
+    </footer>
+</div>
+{% endblock %}

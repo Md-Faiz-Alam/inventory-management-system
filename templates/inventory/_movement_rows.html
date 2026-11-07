@@ -1,0 +1,72 @@
+<div id="results" data-results>
+    <div class="catalog-summary">
+        <strong>{{ page_obj.paginator.count }} movement{{ page_obj.paginator.count|pluralize }}</strong>
+        <span>Latest first · Times in IST</span>
+    </div>
+
+    {% if page_obj.object_list %}
+        <div class="table-scroll" role="region" aria-label="Movement history" tabindex="0">
+            <table class="catalog-table movement-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Time</th>
+                        <th scope="col">Product</th>
+                        <th scope="col">Movement</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Balance</th>
+                        <th scope="col">Recorded by</th>
+                        <th scope="col">Reason</th>
+                        <th scope="col">Document</th>
+                        {% if perms.inventory.correct_stock %}<th scope="col">Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movement in page_obj %}
+                        <tr>
+                            <td class="movement-time">{{ movement.created_at|date:"d M Y" }}<br>{{ movement.created_at|date:"H:i:s" }}</td>
+                            <td>
+                                <strong class="product-name">{{ movement.product.name }}</strong>
+                                <span class="product-sku">{{ movement.product.sku }}</span>
+                            </td>
+                            <td>
+                                <span class="catalog-badge {% if movement.kind == 'receive' %}badge-active{% else %}badge-low{% endif %}">
+                                    {{ movement.get_kind_display }}
+                                </span>
+                            </td>
+                            <td class="stock-quantity">
+                                {% if movement.kind == "receive" %}+{% else %}−{% endif %}{{ movement.quantity }}
+                            </td>
+                            <td class="movement-balance">{{ movement.balance_before }} → {{ movement.balance_after }}</td>
+                            <td>{{ movement.actor.username }}</td>
+                            <td class="movement-reason">{{ movement.reason }}</td>
+                            <td class="movement-reason">
+                                {% if movement.purchase_order %}
+                                    <a class="text-link" href="{% url 'po-detail' movement.purchase_order.pk %}">PO {{ movement.purchase_order.reference }}</a><br>
+                                {% endif %}
+                                {% if movement.document_reference %}{{ movement.document_reference }}<br>{% endif %}
+                                {% if movement.reversal_of_id %}<span class="chip chip-info">Reversal of #{{ movement.reversal_of_id }}</span>{% endif %}
+                                {% if movement.counted_quantity is not None %}<span class="chip chip-info">Stocktake</span>{% endif %}
+                                {% if movement.reversal %}<span class="chip chip-warning">Reversed</span>{% endif %}
+                            </td>
+                            {% if perms.inventory.correct_stock %}
+                                <td>
+                                    {% if not movement.reversal_of_id and not movement.reversal and movement.counted_quantity is None and not movement.sales_line %}
+                                        <a class="text-link" href="{% url 'movement-reverse' movement.pk %}">Reverse</a>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% include "includes/pagination.html" with label="Movement" %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">↔</div>
+            <h3>No matching movements.</h3>
+            <p>Record a stock movement or adjust your search filters.</p>
+        </div>
+    {% endif %}
+</div>

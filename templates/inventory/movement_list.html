@@ -14,7 +14,17 @@
 </section>
 
 <section class="panel catalog-panel">
-    <form method="get" class="catalog-filters" role="search" aria-label="Find movements">
+    <form
+        method="get"
+        class="catalog-filters"
+        role="search"
+        aria-label="Find movements"
+        hx-get="{% url 'movement-list' %}"
+        hx-target="#results"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="input changed delay:300ms from:find input[type=search], change from:find select, submit"
+    >
         {% for field in filter_form %}
             <div>
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -28,67 +38,6 @@
         <a class="button button-quiet" href="{% url 'movement-list' %}">Reset</a>
     </form>
 
-    <div class="catalog-summary">
-        <strong>{{ page_obj.paginator.count }} movement{{ page_obj.paginator.count|pluralize }}</strong>
-        <span>Latest first · Times in IST</span>
-    </div>
-
-    {% if page_obj.object_list %}
-        <div class="table-scroll" role="region" aria-label="Movement history" tabindex="0">
-            <table class="catalog-table movement-table">
-                <thead>
-                    <tr>
-                        <th scope="col">Time</th>
-                        <th scope="col">Product</th>
-                        <th scope="col">Movement</th>
-                        <th scope="col">Quantity</th>
-                        <th scope="col">Balance</th>
-                        <th scope="col">Recorded by</th>
-                        <th scope="col">Reason</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for movement in page_obj %}
-                        <tr>
-                            <td class="movement-time">{{ movement.created_at|date:"d M Y" }}<br>{{ movement.created_at|date:"H:i:s" }}</td>
-                            <td>
-                                <strong class="product-name">{{ movement.product.name }}</strong>
-                                <span class="product-sku">{{ movement.product.sku }}</span>
-                            </td>
-                            <td>
-                                <span class="catalog-badge {% if movement.kind == 'receive' %}badge-active{% else %}badge-low{% endif %}">
-                                    {{ movement.get_kind_display }}
-                                </span>
-                            </td>
-                            <td class="stock-quantity">
-                                {% if movement.kind == "receive" %}+{% else %}−{% endif %}{{ movement.quantity }}
-                            </td>
-                            <td class="movement-balance">{{ movement.balance_before }} → {{ movement.balance_after }}</td>
-                            <td>{{ movement.actor.username }}</td>
-                            <td class="movement-reason">{{ movement.reason }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        {% if page_obj.has_other_pages %}
-            <nav class="catalog-pagination" aria-label="Movement pages">
-                {% if page_obj.has_previous %}
-                    <a class="button button-quiet" href="?{{ pagination_query }}&page={{ page_obj.previous_page_number }}">← Previous</a>
-                {% endif %}
-                <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                {% if page_obj.has_next %}
-                    <a class="button button-quiet" href="?{{ pagination_query }}&page={{ page_obj.next_page_number }}">Next →</a>
-                {% endif %}
-            </nav>
-        {% endif %}
-    {% else %}
-        <div class="empty-state">
-            <div class="empty-icon" aria-hidden="true">↔</div>
-            <h3>No matching movements.</h3>
-            <p>Record a stock movement or adjust your search filters.</p>
-        </div>
-    {% endif %}
+    {% include "inventory/_movement_rows.html" %}
 </section>
 {% endblock %}

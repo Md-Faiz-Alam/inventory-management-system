@@ -1,0 +1,33 @@
+{% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+{% if form.errors %}
+    <div class="notice notice-error" role="alert">
+        {% if form.non_field_errors %}{{ form.non_field_errors }}{% else %}Please correct the errors below.{% endif %}
+        {% for hidden in form.hidden_fields %}
+            {% for error in hidden.errors %}<p>{{ error }} Reload this page before trying again.</p>{% endfor %}
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="form-grid">
+    {% for field in form.visible_fields %}
+        <div class="field {% if field.widget_type == 'textarea' or field.widget_type == 'selectmultiple' %}field-wide{% endif %}">
+            {% if field.widget_type == "checkbox" %}
+                <label><input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" {% if field.value %}checked{% endif %} style="width:auto;min-height:auto;margin-right:8px"> {{ field.label }}</label>
+            {% else %}
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}{% if field.field.required %} *{% endif %}
+                </label>
+                {{ field }}
+            {% endif %}
+
+            {% if field.help_text %}
+                <p class="field-help">{{ field.help_text|safe }}</p>
+            {% endif %}
+
+            {% for error in field.errors %}
+                <p class="field-error">{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endfor %}
+</div>

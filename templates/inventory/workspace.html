@@ -4,17 +4,19 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/catalog.css' %}">
 <link rel="stylesheet" href="{% static 'css/stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/ui.css' %}">
+<script src="{% static 'vendor/htmx.min.js' %}" defer></script>
+<script src="{% static 'js/ui.js' %}" defer></script>
+{% block page_head %}{% endblock %}
 {% endblock %}
 
 {% block body %}
-<div class="workspace">
+<div class="workspace" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <aside class="sidebar" id="sidebar" aria-label="Workspace navigation">
         <a class="brand" href="{% url 'overview' %}">
-            <span class="brand-mark" aria-hidden="true">I</span>
-            <span>Inventory<span class="brand-subtitle">WORKSPACE</span></span>
+            <span class="brand-mark" aria-hidden="true">S</span>
+            <span>StockFlow<span class="brand-subtitle">INVENTORY SUITE</span></span>
         </a>
-
-        <span class="nav-label">WORKSPACE</span>
 
         <nav class="navigation" aria-label="Main">
             <a
@@ -23,10 +25,11 @@
                 {% if active_page == 'overview' %}aria-current="page"{% endif %}
             >
                 <span class="nav-symbol" aria-hidden="true">◈</span>
-                Overview
+                Dashboard
             </a>
 
             {% if perms.inventory.view_product %}
+                <span class="nav-label">INVENTORY</span>
                 <a
                     class="nav-link {% if active_page == 'products' %}is-active{% endif %}"
                     href="{% url 'product-list' %}"
@@ -55,17 +58,31 @@
                         Movements
                     </a>
                 {% endif %}
-
-                <a
-                    class="nav-link {% if active_page == 'reports' %}is-active{% endif %}"
-                    href="{% url 'report-stock' %}"
-                    {% if active_page == 'reports' %}aria-current="page"{% endif %}
-                >
-                    <span class="nav-symbol" aria-hidden="true">▤</span>
-                    Reports
-                </a>
             {% endif %}
 
+            {% if perms.inventory.view_purchaseorder or perms.sales.view_salesorder or perms.suppliers.view_supplier or perms.sales.view_customer %}
+                <span class="nav-label">TRADE</span>
+            {% endif %}
+            {% if perms.inventory.view_purchaseorder and perms.inventory.view_product %}
+                <a
+                    class="nav-link {% if active_page == 'purchasing' %}is-active{% endif %}"
+                    href="{% url 'po-list' %}"
+                    {% if active_page == 'purchasing' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">⬇</span>
+                    Purchase orders
+                </a>
+            {% endif %}
+            {% if perms.sales.view_salesorder %}
+                <a
+                    class="nav-link {% if active_page == 'sales' %}is-active{% endif %}"
+                    href="{% url 'order-list' %}"
+                    {% if active_page == 'sales' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">⬆</span>
+                    Sales orders
+                </a>
+            {% endif %}
             {% if perms.suppliers.view_supplier %}
                 <a
                     class="nav-link {% if active_page == 'suppliers' %}is-active{% endif %}"
@@ -76,11 +93,62 @@
                     Suppliers
                 </a>
             {% endif %}
+            {% if perms.sales.view_customer %}
+                <a
+                    class="nav-link {% if active_page == 'customers' %}is-active{% endif %}"
+                    href="{% url 'customer-list' %}"
+                    {% if active_page == 'customers' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">☺</span>
+                    Customers
+                </a>
+            {% endif %}
 
-            <a class="nav-link" href="{% url 'overview' %}#account">
+            <span class="nav-label">INSIGHTS</span>
+            {% if perms.inventory.view_product %}
+                <a
+                    class="nav-link {% if active_page == 'reports' %}is-active{% endif %}"
+                    href="{% url 'report-stock' %}"
+                    {% if active_page == 'reports' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">▤</span>
+                    Reports
+                </a>
+            {% endif %}
+            {% if perms.audit.view_auditentry %}
+                <a
+                    class="nav-link {% if active_page == 'activity' %}is-active{% endif %}"
+                    href="{% url 'activity' %}"
+                    {% if active_page == 'activity' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">≋</span>
+                    Activity log
+                </a>
+            {% endif %}
+            <a class="nav-link" href="{% url 'api-docs' %}">
+                <span class="nav-symbol" aria-hidden="true">{ }</span>
+                API docs
+            </a>
+
+            <span class="nav-label">ACCOUNT</span>
+            <a
+                class="nav-link {% if active_page == 'profile' %}is-active{% endif %}"
+                href="{% url 'profile' %}"
+                {% if active_page == 'profile' %}aria-current="page"{% endif %}
+            >
                 <span class="nav-symbol" aria-hidden="true">◎</span>
                 My account
             </a>
+            {% if perms.accounts.change_user %}
+                <a
+                    class="nav-link {% if active_page == 'users' %}is-active{% endif %}"
+                    href="{% url 'user-list' %}"
+                    {% if active_page == 'users' %}aria-current="page"{% endif %}
+                >
+                    <span class="nav-symbol" aria-hidden="true">⚑</span>
+                    Users &amp; roles
+                </a>
+            {% endif %}
 
             {% if user.is_staff %}
                 <a class="nav-link" href="{% url 'admin:index' %}">
@@ -119,18 +187,36 @@
                 >Menu</button>
 
                 <span class="breadcrumb">
-                    Workspace <span>/</span>
-                    <strong>{% block breadcrumb %}Overview{% endblock %}</strong>
+                    StockFlow <span>/</span>
+                    <strong>{% block breadcrumb %}Dashboard{% endblock %}</strong>
                 </span>
             </div>
 
             <div class="topbar-actions">
                 <span class="today">{% now "D, d M Y" %}</span>
+                {% if perms.inventory.view_product %}
+                    <div
+                        hx-get="{% url 'alerts' %}"
+                        hx-trigger="load, every 60s"
+                        hx-swap="innerHTML"
+                        class="alert-slot"
+                    ></div>
+                {% endif %}
                 <button class="button button-quiet" type="button" data-theme-toggle>
                     Switch theme
                 </button>
             </div>
         </header>
+
+        {% if is_guest %}
+            <div class="guest-banner" role="status">
+                <span><strong>Guest mode:</strong> you can look at everything, but nothing can be changed.</span>
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button class="text-link" type="submit">{% if demo_roles %}Sign in with a demo role →{% else %}Leave guest mode →{% endif %}</button>
+                </form>
+            </div>
+        {% endif %}
 
         <main class="page-content" id="main-content">
             {% if messages %}
@@ -146,10 +232,11 @@
             {% block workspace_content %}{% endblock %}
 
             <footer class="page-footer">
-                <span>Inventory Workspace</span>
+                <span>StockFlow Inventory Suite</span>
                 <span>Organized stock. Clear decisions.</span>
             </footer>
         </main>
     </div>
 </div>
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 {% endblock %}

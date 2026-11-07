@@ -1,0 +1,83 @@
+<div id="results" data-results>
+    <div class="catalog-summary">
+        <strong>{{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}</strong>
+        <span>Active products only · Totals above cover all active products</span>
+    </div>
+
+    {% if page_obj.object_list %}
+        <div class="table-scroll" role="region" aria-label="Stock balances" tabindex="0">
+            <table class="catalog-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Product</th>
+                        <th scope="col">Available</th>
+                        <th scope="col">Reorder level</th>
+                        <th scope="col">Stock level</th>
+                        {% if perms.inventory.receive_stock or perms.inventory.issue_stock or perms.inventory.correct_stock %}
+                            <th scope="col">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in page_obj %}
+                        <tr>
+                            <td>
+                                <strong class="product-name">{{ product.name }}</strong>
+                                <span class="product-sku">{{ product.sku }}</span>
+                            </td>
+                            <td class="stock-quantity">{{ product.on_hand }}</td>
+                            <td>{{ product.reorder_level }}</td>
+                            <td>
+                                {% if product.on_hand == 0 %}
+                                    <span class="catalog-badge badge-out">Out of stock</span>
+                                {% elif product.on_hand <= product.reorder_level %}
+                                    <span class="catalog-badge badge-low">Low stock</span>
+                                {% else %}
+                                    <span class="catalog-badge badge-active">Healthy</span>
+                                {% endif %}
+                            </td>
+                            {% if perms.inventory.receive_stock or perms.inventory.issue_stock or perms.inventory.correct_stock %}
+                                <td>
+                                    <div class="row-actions">
+                                        {% if perms.inventory.receive_stock %}
+                                            <a
+                                                class="text-link"
+                                                href="{% url 'stock-receive' product.pk %}"
+                                                aria-label="Receive stock for {{ product.name }}"
+                                            >Receive</a>
+                                        {% endif %}
+                                        {% if perms.inventory.issue_stock %}
+                                            <a
+                                                class="text-link"
+                                                href="{% url 'stock-issue' product.pk %}"
+                                                aria-label="Issue stock for {{ product.name }}"
+                                            >Issue</a>
+                                        {% endif %}
+                                        {% if perms.inventory.correct_stock %}
+                                            <a
+                                                class="text-link"
+                                                href="{% url 'stocktake' product.pk %}"
+                                                aria-label="Record a stocktake for {{ product.name }}"
+                                            >Count</a>
+                                        {% endif %}
+                                        {% if product.on_hand <= product.reorder_level and perms.inventory.add_purchaseorder %}
+                                            <a class="text-link" href="{% url 'po-create' %}?product={{ product.pk }}">Reorder</a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% include "includes/pagination.html" with label="Stock" %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">⇅</div>
+            <h3>No matching products.</h3>
+            <p>Try different filters or add an active product to the catalog.</p>
+        </div>
+    {% endif %}
+</div>

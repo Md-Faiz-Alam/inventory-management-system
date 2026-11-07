@@ -1,0 +1,8 @@
+{% if alert_count %}
+    <a
+        class="alert-bell"
+        href="{% url 'stock-list' %}?health=low"
+        title="{{ alert_count }} product{{ alert_count|pluralize }} at or below reorder level"
+        aria-label="{{ alert_count }} stock alert{{ alert_count|pluralize }}"
+    >🔔<span class="alert-count">{{ alert_count }}</span></a>
+{% endif %}
