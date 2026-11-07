@@ -14,10 +14,10 @@
                             <td>{{ entry.actor_username|default:"—" }}</td>
                             <td><span class="chip {% if entry.action == 'login_failed' %}chip-danger{% elif entry.action == 'stock' %}chip-success{% elif entry.action == 'order' %}chip-warning{% elif entry.action == 'create' or entry.action == 'update' %}chip-info{% endif %}">{{ entry.get_action_display }}</span></td>
                             <td class="movement-reason">{{ entry.message }}{% if entry.content_type %}<span class="product-sku">{{ entry.content_type.name|capfirst }} #{{ entry.object_id }}</span>{% endif %}</td>
-                            <td class="movement-reason" style="font-size:11px">
+                            <td class="movement-document">
                                 {% for field, values in entry.changes.items %}<div><strong>{{ field }}</strong>: {{ values.0|default:"—" }} → {{ values.1|default:"—" }}</div>{% empty %}—{% endfor %}
                             </td>
-                            <td class="product-sku">{{ entry.ip_address|default:"—" }}</td>
+                            <td class="movement-time"><code>{{ entry.ip_address|default:"—" }}</code></td>
                         </tr>
                     {% endfor %}
                 </tbody>

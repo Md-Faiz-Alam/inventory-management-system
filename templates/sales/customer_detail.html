@@ -19,7 +19,7 @@
         <section class="panel">
             <span class="catalog-badge {% if customer.is_active %}badge-active{% endif %}">{{ customer.is_active|yesno:"Active,Archived" }}</span>
             <dl class="facts">
-                <div><dt>Email</dt><dd>{{ customer.email|default:"—" }}</dd></div>
+                <div class="fact-wide"><dt>Email</dt><dd>{{ customer.email|default:"—" }}</dd></div>
                 <div><dt>Phone</dt><dd>{{ customer.phone|default:"—" }}</dd></div>
                 <div><dt>GSTIN</dt><dd>{{ customer.gstin|default:"—" }}</dd></div>
                 <div><dt>Address</dt><dd>{{ customer.address|default:"—"|linebreaksbr }}</dd></div>

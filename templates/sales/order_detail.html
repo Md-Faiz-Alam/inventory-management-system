@@ -85,7 +85,7 @@
             <dl class="facts">
                 <div><dt>Code</dt><dd>{{ order.customer.code }}</dd></div>
                 <div><dt>Phone</dt><dd>{{ order.customer.phone|default:"—" }}</dd></div>
-                <div><dt>Email</dt><dd>{{ order.customer.email|default:"—" }}</dd></div>
+                <div class="fact-wide"><dt>Email</dt><dd>{{ order.customer.email|default:"—" }}</dd></div>
                 <div><dt>GSTIN</dt><dd>{{ order.customer.gstin|default:"—" }}</dd></div>
             </dl>
         </section>

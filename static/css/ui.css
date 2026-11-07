@@ -721,6 +721,26 @@ a.kpi-card:hover {
     font-size: 12px;
 }
 
+/* ---------- movement history ---------- */
+
+.movement-document {
+    min-width: 150px;
+    max-width: 220px;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.movement-document .chip {
+    margin-top: 4px;
+}
+
+/* ---------- detail facts ---------- */
+
+.facts .fact-wide {
+    grid-column: 1 / -1;
+}
+
 /* ---------- guest mode ---------- */
 
 .guest-banner {

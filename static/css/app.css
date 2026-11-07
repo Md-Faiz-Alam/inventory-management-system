@@ -840,12 +840,15 @@ h3 {
         top: 78px;
         width: min(280px, 85vw);
         transform: translateX(-100%);
-        transition: transform 180ms ease;
-        box-shadow: 20px 20px 50px rgb(0 0 0 / 20%);
+        visibility: hidden;
+        transition: transform 180ms ease, visibility 0s linear 180ms;
     }
 
     .sidebar.is-open {
+        visibility: visible;
         transform: translateX(0);
+        box-shadow: 20px 20px 50px rgb(0 0 0 / 20%);
+        transition: transform 180ms ease;
     }
 
     .workspace-main {

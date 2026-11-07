@@ -265,7 +265,7 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": (
         "JSON API for products, suppliers, customers, stock movements, purchase "
         "orders and sales orders. Sign in to the web app first to try requests here, "
-        "or obtain a token from /api/v1/auth/token/ and send 'Authorization: Token <key>'."
+        "or obtain a token from /api/v1/auth/token/ and send the header `Authorization: Token YOUR_TOKEN`."
     ),
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,

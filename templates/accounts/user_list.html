@@ -8,7 +8,7 @@
     <div>
         <span class="eyebrow">TEAM ACCESS</span>
         <h1>Users &amp; roles</h1>
-        <p class="muted">Admin manages everything, Manager runs operations, Staff handles the warehouse floor.</p>
+        <p class="muted">Admin manages everything, Manager runs operations, Staff handles the warehouse floor, Viewer can only look.</p>
     </div>
     {% if perms.accounts.add_user %}
         <a class="button button-primary" href="{% url 'user-create' %}">+ Add user</a>
