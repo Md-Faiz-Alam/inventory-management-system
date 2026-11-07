@@ -1,0 +1,39 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Users &amp; roles · StockFlow{% endblock %}
+{% block breadcrumb %}Users &amp; roles{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">TEAM ACCESS</span>
+        <h1>Users &amp; roles</h1>
+        <p class="muted">Admin manages everything, Manager runs operations, Staff handles the warehouse floor.</p>
+    </div>
+    {% if perms.accounts.add_user %}
+        <a class="button button-primary" href="{% url 'user-create' %}">+ Add user</a>
+    {% endif %}
+</section>
+
+<section class="panel catalog-panel">
+    <form
+        method="get"
+        class="catalog-filters"
+        role="search"
+        aria-label="Find users"
+        hx-get="{% url 'user-list' %}"
+        hx-target="#results"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="input changed delay:300ms from:find input[type=search], submit"
+    >
+        <div>
+            <label for="user-search">Search</label>
+            <input id="user-search" type="search" name="q" value="{{ query }}" maxlength="100" placeholder="Username, name, or email" autocomplete="off">
+        </div>
+        <button class="button button-primary" type="submit">Apply</button>
+        <a class="button button-quiet" href="{% url 'user-list' %}">Reset</a>
+    </form>
+    {% include "accounts/_user_rows.html" %}
+</section>
+{% endblock %}

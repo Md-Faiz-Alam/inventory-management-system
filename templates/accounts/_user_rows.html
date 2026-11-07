@@ -1,0 +1,38 @@
+<div id="results" data-results>
+    <div class="catalog-summary">
+        <strong>{{ page_obj.paginator.count }} user{{ page_obj.paginator.count|pluralize }}</strong>
+        <span>Roles are Django groups with fixed permissions</span>
+    </div>
+    {% if page_obj.object_list %}
+        <div class="table-scroll" role="region" aria-label="Users" tabindex="0">
+            <table class="catalog-table">
+                <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Last sign-in</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                    {% for member in page_obj %}
+                        <tr>
+                            <td><strong class="product-name">{{ member.get_full_name|default:member.username }}</strong><span class="product-sku">{{ member.username }}</span></td>
+                            <td>{{ member.email|default:"—" }}</td>
+                            <td><span class="chip {% if member.role == 'Admin' or member.role == 'Administrator' %}chip-danger{% elif member.role == 'Manager' %}chip-warning{% elif member.role == 'Staff' %}chip-info{% endif %}">{{ member.role }}</span></td>
+                            <td>{{ member.last_login|date:"d M Y, H:i"|default:"Never" }}</td>
+                            <td><span class="catalog-badge {% if member.is_active %}badge-active{% endif %}">{{ member.is_active|yesno:"Active,Inactive" }}</span></td>
+                            <td>
+                                {% if member.locked %}
+                                    <span class="chip">Shared demo</span>
+                                {% elif not member.is_superuser or user.is_superuser %}
+                                    <div class="row-actions">
+                                        {% if member.is_demo %}<span class="chip">Demo</span>{% endif %}
+                                        <a class="text-link" href="{% url 'user-edit' member.pk %}">Edit</a>
+                                        {% if member.pk != user.pk %}<a class="text-link" href="{% url 'user-password' member.pk %}">Set password</a>{% endif %}
+                                    </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "includes/pagination.html" with label="User" %}
+    {% else %}
+        <div class="empty-state"><h3>No users found.</h3></div>
+    {% endif %}
+</div>

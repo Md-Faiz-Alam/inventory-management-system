@@ -1,0 +1,26 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}{{ page_title }} · StockFlow{% endblock %}
+{% block breadcrumb %}Users &amp; roles{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">USER ACCOUNT</span>
+        <h1>{{ page_title }}</h1>
+        <p class="muted">Choose the role that matches what this person needs to do.</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'user-list' %}">Back to users</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <form method="post" class="catalog-form">
+        {% csrf_token %}
+        {% include "includes/form_fields.html" %}
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">{{ submit_label }}</button>
+            <a class="button button-quiet" href="{% url 'user-list' %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

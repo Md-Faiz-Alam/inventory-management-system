@@ -1,13 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Sign in · Inventory Workspace{% endblock %}
+{% block title %}Sign in · StockFlow{% endblock %}
+
+{% block extra_css %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/ui.css' %}">
+{% endblock %}
 
 {% block body %}
 <div class="auth-layout">
     <aside class="auth-story">
         <a class="brand" href="{% url 'overview' %}">
-            <span class="brand-mark" aria-hidden="true">I</span>
-            <span>Inventory<span class="brand-subtitle">WORKSPACE</span></span>
+            <span class="brand-mark" aria-hidden="true">S</span>
+            <span>StockFlow<span class="brand-subtitle">INVENTORY SUITE</span></span>
         </a>
 
         <div class="story-content">
@@ -50,7 +55,11 @@
             <h2 id="login-heading">Welcome back.</h2>
             <p class="muted">Sign in to your inventory workspace.</p>
 
-            {% if form.errors %}
+            {% if locked %}
+                <div class="notice notice-error" role="alert">
+                    Too many failed attempts. Wait 15 minutes and try again.
+                </div>
+            {% elif form.errors %}
                 <div class="notice notice-error" role="alert">
                     Sign-in failed. Check your username and password.
                 </div>
@@ -100,12 +109,44 @@
                 </button>
             </form>
 
-            <p class="auth-help">
-                Need access? Contact your workspace administrator.
-            </p>
+            {% if guest_access %}
+                <form method="post" action="{% url 'guest-login' %}" class="guest-login">
+                    {% csrf_token %}
+                    <button class="button button-quiet button-full" type="submit">
+                        Explore as guest (read-only, no password)
+                    </button>
+                </form>
+            {% endif %}
+
+            {% if demo_accounts %}
+                <div class="demo-logins">
+                    <strong>Demo accounts. Click to fill in:</strong>
+                    {% for account in demo_accounts %}
+                        <button
+                            type="button"
+                            data-demo-username="{{ account.username }}"
+                            data-demo-password="{{ account.password }}"
+                        >{{ account.role }}</button>
+                    {% endfor %}
+                </div>
+                <script>
+                    document.querySelectorAll("[data-demo-username]").forEach((button) => {
+                        button.addEventListener("click", () => {
+                            document.getElementById("id_username").value = button.dataset.demoUsername;
+                            document.getElementById("id_password").value = button.dataset.demoPassword;
+                            document.getElementById("id_password").focus();
+                        });
+                    });
+                </script>
+            {% else %}
+                <p class="auth-help">
+                    {% if guest_access %}Just looking? Use the guest button above.{% else %}Need access? Contact your workspace administrator.{% endif %}
+                </p>
+            {% endif %}
+            <p class="auth-help"><a class="text-link" href="{% url 'overview' %}">← Back to home</a></p>
         </section>
 
-        <span class="auth-footer">Inventory Workspace · {% now "Y" %}</span>
+        <span class="auth-footer">StockFlow Inventory Suite · {% now "Y" %}</span>
     </main>
 </div>
 {% endblock %}

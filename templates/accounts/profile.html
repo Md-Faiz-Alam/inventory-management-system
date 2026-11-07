@@ -1,0 +1,61 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}My account · StockFlow{% endblock %}
+{% block breadcrumb %}My account{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">PROFILE</span>
+        <h1>My account</h1>
+        <p class="muted">Signed in as {{ user.username }} · {{ role }}</p>
+    </div>
+</section>
+
+{% if demo_locked %}
+    <div class="catalog-notice" role="status" style="margin-bottom:20px">
+        This is a shared demo account, so its profile and password are read-only.
+    </div>
+{% endif %}
+
+<div class="detail-grid">
+    <div class="detail-stack">
+        <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">DETAILS</span><h2>Profile</h2></div></div>
+            <form method="post" class="catalog-form">
+                {% csrf_token %}
+                <input type="hidden" name="form" value="profile">
+                {% include "includes/form_fields.html" with form=profile_form %}
+                <div class="form-actions"><button class="button button-primary" type="submit">Save profile</button></div>
+            </form>
+        </section>
+        <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">SECURITY</span><h2>Change password</h2></div></div>
+            <form method="post" class="catalog-form">
+                {% csrf_token %}
+                <input type="hidden" name="form" value="password">
+                {% include "includes/form_fields.html" with form=password_form %}
+                <div class="form-actions"><button class="button button-primary" type="submit">Change password</button></div>
+            </form>
+        </section>
+    </div>
+    <div class="detail-stack">
+        <section class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">ACCESS</span><h2>{{ role }}</h2></div></div>
+            <dl class="account-details">
+                <div><dt>Last sign-in</dt><dd>{{ user.last_login|date:"d M Y, H:i"|default:"Not recorded" }}</dd></div>
+                <div><dt>Member since</dt><dd>{{ user.date_joined|date:"d M Y" }}</dd></div>
+                <div><dt>Permissions</dt><dd>{{ permissions|length }}</dd></div>
+            </dl>
+            {% if permissions %}
+                <details style="margin-top:14px">
+                    <summary class="text-link">Show permissions</summary>
+                    <ul class="muted" style="font-size:12px;margin-top:10px">
+                        {% for perm in permissions %}<li><code>{{ perm }}</code></li>{% endfor %}
+                    </ul>
+                </details>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}
