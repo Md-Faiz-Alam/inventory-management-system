@@ -371,7 +371,7 @@ class ReportTests(TestCase):
     def test_unknown_output_format_is_rejected(self):
         response = self.client.get(
             reverse("report-stock"),
-            {"format": "pdf"},
+            {"format": "xlsx"},
         )
         self.assertEqual(response.status_code, 400)
         self.assertContains(

@@ -11,9 +11,14 @@
         <p class="muted">{{ description }}</p>
     </div>
     {% if filters_valid %}
-        <a class="button button-primary" href="?{{ export_query }}">
-            Download CSV
-        </a>
+        <div class="action-bar" style="margin-top:0">
+            <a class="button button-quiet" href="?{{ pdf_query }}" title="First {{ max_pdf_rows }} rows">
+                Download PDF
+            </a>
+            <a class="button button-primary" href="?{{ export_query }}">
+                Download CSV
+            </a>
+        </div>
     {% endif %}
 </section>
 

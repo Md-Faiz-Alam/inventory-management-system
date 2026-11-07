@@ -1,0 +1,40 @@
+{% extends "pdf/base.html" %}
+{% load humanize %}
+
+{% block heading %}
+    <h1>{% if order.status == "fulfilled" %}TAX INVOICE{% else %}QUOTATION{% endif %}</h1>
+    <div><b>{{ order.number }}</b></div>
+    <div class="muted">Date: {% if order.fulfilled_at %}{{ order.fulfilled_at|date:"d M Y" }}{% else %}{{ order.created_at|date:"d M Y" }}{% endif %}</div>
+    <div class="muted">Status: {{ order.get_status_display }}</div>
+{% endblock %}
+
+{% block content %}
+<h2>Bill to</h2>
+<div class="box">
+    <b>{{ order.customer.name }}</b> ({{ order.customer.code }})<br>
+    {% if order.customer.address %}{{ order.customer.address|linebreaksbr }}<br>{% endif %}
+    {% if order.customer.gstin %}GSTIN: {{ order.customer.gstin }}<br>{% endif %}
+    {{ order.customer.email }} {{ order.customer.phone }}
+</div>
+
+<table class="items">
+    <thead>
+        <tr><th width="6%">#</th><th width="44%">Item</th><th width="12%" class="right">Qty</th><th width="18%" class="right">Rate (INR)</th><th width="20%" class="right">Amount (INR)</th></tr>
+    </thead>
+    <tbody>
+        {% for line in lines %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ line.product.name }}<br><span class="muted">{{ line.product.sku }}</span></td>
+                <td class="right">{{ line.quantity|intcomma }}</td>
+                <td class="right">{{ line.unit_price|floatformat:2|intcomma }}</td>
+                <td class="right">{{ line.line_total|floatformat:2|intcomma }}</td>
+            </tr>
+        {% endfor %}
+        <tr class="total"><td colspan="4" class="right">Total</td><td class="right">{{ order_total|floatformat:2|intcomma }}</td></tr>
+    </tbody>
+</table>
+
+{% if order.notes %}<p><b>Note:</b> {{ order.notes }}</p>{% endif %}
+<p class="muted" style="margin-top:24pt">Prices are as agreed on the order. This is a computer-generated document and needs no signature.</p>
+{% endblock %}

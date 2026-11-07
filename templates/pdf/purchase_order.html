@@ -1,0 +1,49 @@
+{% extends "pdf/base.html" %}
+{% load humanize %}
+
+{% block heading %}
+    <h1>PURCHASE ORDER</h1>
+    <div><b>{{ order.reference }}</b></div>
+    <div class="muted">Date: {{ order.created_at|date:"d M Y" }}</div>
+    <div class="muted">Status: {{ order.status }}</div>
+{% endblock %}
+
+{% block content %}
+<h2>Supplier</h2>
+<div class="box">
+    <b>{{ order.supplier.name }}</b> ({{ order.supplier.code }})<br>
+    {% if order.supplier.contact_name %}Attn: {{ order.supplier.contact_name }}<br>{% endif %}
+    {% if order.supplier.address %}{{ order.supplier.address|linebreaksbr }}<br>{% endif %}
+    {{ order.supplier.email }} {{ order.supplier.phone }}
+</div>
+
+<table class="items">
+    <thead>
+        <tr><th width="46%">Item</th><th width="14%" class="right">Ordered</th><th width="14%" class="right">Received</th><th width="12%" class="right">Rate</th><th width="14%" class="right">Amount (INR)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ order.product.name }}<br><span class="muted">{{ order.product.sku }}</span></td>
+            <td class="right">{{ order.quantity|intcomma }}</td>
+            <td class="right">{{ order.received_quantity|intcomma }}</td>
+            <td class="right">{{ order.unit_cost|floatformat:2|intcomma }}</td>
+            <td class="right">{{ order_value|floatformat:2|intcomma }}</td>
+        </tr>
+        <tr class="total"><td colspan="4" class="right">Order value</td><td class="right">{{ order_value|floatformat:2|intcomma }}</td></tr>
+    </tbody>
+</table>
+
+{% if receipts %}
+<h2>Deliveries received</h2>
+<table class="items">
+    <thead><tr><th>Date</th><th>Document</th><th class="right">Quantity</th></tr></thead>
+    <tbody>
+        {% for movement in receipts %}
+            <tr><td>{{ movement.created_at|date:"d M Y" }}</td><td>{{ movement.document_reference|default:"—" }}</td><td class="right">{% if movement.kind == "issue" %}−{% endif %}{{ movement.quantity }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<p class="muted" style="margin-top:24pt">Please quote {{ order.reference }} on your delivery challan and invoice. Raised by {{ order.actor.get_full_name|default:order.actor.username }}.</p>
+{% endblock %}

@@ -11,11 +11,14 @@ from django.views.decorators.http import require_http_methods
 from inventory.models import StockMovement
 from inventory.views import products_with_stock, workspace_context
 
+from config.pdf import render_pdf
+
 from .csv_exports import csv_response
 from .forms import MovementReportForm, StockReportForm
 from .snapshots import snapshot_page
 
 MAX_EXPORT_ROWS = 10_000
+MAX_PDF_ROWS = 500
 PAGE_SIZE = 25
 
 
@@ -55,7 +58,30 @@ def movement_row(record):
         record["balance_after"],
         record["actor__username"],
         record["reason"],
+        movement_document(record),
     ]
+
+
+def movement_document(record):
+    """Describe the business document behind a movement, if any."""
+    parts = []
+    if record.get("purchase_order__reference"):
+        parts.append(f"PO {record['purchase_order__reference']}")
+    if record.get("document_reference"):
+        parts.append(record["document_reference"])
+    if record.get("reversal_of_id"):
+        parts.append(f"Reversal of #{record['reversal_of_id']}")
+    if record.get("counted_quantity") is not None:
+        parts.append(f"Stocktake count {record['counted_quantity']}")
+    return " · ".join(parts)
+
+
+def report_summary(records, summary_fields):
+    aliases = {f"summary_{index}": label for index, label in enumerate(summary_fields)}
+    totals = records.order_by().aggregate(
+        **{alias: summary_fields[label] for alias, label in aliases.items()}
+    )
+    return {label: totals[alias] or 0 for alias, label in aliases.items()}
 
 
 def report_response(
@@ -74,8 +100,25 @@ def report_response(
 ):
     output = request.GET.get("format", "html")
 
-    if output not in {"html", "csv"}:
+    if output not in {"html", "csv", "pdf"}:
         form.add_error(None, "Unsupported report format.")
+
+    if not form.errors and output == "pdf":
+        pdf_records = list(records[: MAX_PDF_ROWS + 1])
+        return render_pdf(
+            request,
+            "pdf/report.html",
+            {
+                "title": title,
+                "description": description,
+                "columns": columns,
+                "rows": [row_builder(record) for record in pdf_records[:MAX_PDF_ROWS]],
+                "row_count": min(len(pdf_records), MAX_PDF_ROWS),
+                "truncated": len(pdf_records) > MAX_PDF_ROWS,
+                "summary": report_summary(records, summary_fields),
+            },
+            filename.replace(".csv", ".pdf"),
+        )
 
     if not form.errors and output == "csv":
         export_records = list(
@@ -119,6 +162,8 @@ def report_response(
 
     export_parameters = parameters.copy()
     export_parameters["format"] = "csv"
+    pdf_parameters = parameters.copy()
+    pdf_parameters["format"] = "pdf"
 
     context = workspace_context(request)
     context.update(
@@ -138,6 +183,8 @@ def report_response(
             "summary": summary,
             "pagination_query": parameters.urlencode(),
             "export_query": export_parameters.urlencode(),
+            "pdf_query": pdf_parameters.urlencode(),
+            "max_pdf_rows": MAX_PDF_ROWS,
             "max_export_rows": MAX_EXPORT_ROWS,
             "report_timezone": str(
                 timezone.get_current_timezone()
@@ -285,6 +332,10 @@ def movement_report(request):
         "balance_after",
         "actor__username",
         "reason",
+        "purchase_order__reference",
+        "document_reference",
+        "reversal_of_id",
+        "counted_quantity",
     )
 
     return report_response(
@@ -301,6 +352,7 @@ def movement_report(request):
             "Balance after",
             "Recorded by",
             "Reason",
+            "Document",
         ],
         row_builder=movement_row,
         title="Stock movement report",
