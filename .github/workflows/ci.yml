@@ -82,3 +82,25 @@ jobs:
 
       - name: Collect static assets
         run: python manage.py collectstatic --noinput
+
+      - name: Bootstrap demo data twice (must be idempotent)
+        env:
+          DEMO_ADMIN_PASSWORD: ci-demo-admin-pass-7731
+          DEMO_MANAGER_PASSWORD: ci-demo-manager-pass-7731
+          DEMO_STAFF_PASSWORD: ci-demo-staff-pass-7731
+        run: |
+          python manage.py bootstrap_demo
+          python manage.py bootstrap_demo
+
+      - name: Production deployment checks
+        env:
+          DJANGO_SECRET_KEY: ci-only-deploy-check-key-that-is-long-and-random-6b1f0f9a2c7d4e8b
+          DJANGO_SECURE_HTTPS: "true"
+        run: python manage.py check --deploy --fail-level WARNING
+
+      - name: Smoke test with Gunicorn
+        run: |
+          gunicorn config.wsgi:application --bind 127.0.0.1:8000 --daemon
+          sleep 3
+          curl --fail --silent http://127.0.0.1:8000/healthz/
+          curl --fail --silent --output /dev/null -H "X-Forwarded-Proto: https" http://127.0.0.1:8000/
