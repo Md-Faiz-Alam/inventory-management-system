@@ -1,0 +1,100 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}{{ page_title }} · StockFlow{% endblock %}
+{% block breadcrumb %}Sales orders{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">CUSTOMER ORDER</span>
+        <h1>{{ page_title }}</h1>
+        <p class="muted">Saved as a draft. Confirm it when the customer agrees, then fulfil to issue stock.</p>
+    </div>
+    <a class="button button-quiet" href="{% if order %}{% url 'order-detail' order.pk %}{% else %}{% url 'order-list' %}{% endif %}">Back</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <form method="post" class="catalog-form" data-order-form>
+        {% csrf_token %}
+        {% include "includes/form_fields.html" %}
+
+        <div class="panel-heading" style="margin-top:26px">
+            <div><span class="eyebrow">ITEMS</span><h2>Order lines</h2></div>
+            <button class="button button-quiet" type="button" data-add-line>+ Add line</button>
+        </div>
+
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+            <div class="notice notice-error" role="alert">{{ formset.non_form_errors }}</div>
+        {% endif %}
+
+        <div class="table-scroll">
+            <table class="catalog-table line-table">
+                <thead>
+                    <tr><th style="min-width:220px">Product</th><th style="width:120px">Quantity</th><th style="width:150px">Unit price (₹)</th><th style="width:130px">Line total</th><th style="width:70px">Remove</th></tr>
+                </thead>
+                <tbody data-lines>
+                    {% for line in formset %}
+                        {% include "sales/_order_line.html" with line=line %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <template data-line-template>
+            {% include "sales/_order_line.html" with line=formset.empty_form %}
+        </template>
+
+        <div class="order-total-bar"><span class="muted">Order total</span><strong data-order-total>₹0.00</strong></div>
+
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Save draft</button>
+            <a class="button button-quiet" href="{% url 'order-list' %}">Cancel</a>
+        </div>
+    </form>
+</section>
+
+{{ product_info|json_script:"product-info" }}
+<script>
+(() => {
+    const form = document.querySelector("[data-order-form]");
+    const info = JSON.parse(document.getElementById("product-info").textContent);
+    const body = form.querySelector("[data-lines]");
+    const template = form.querySelector("[data-line-template]");
+    const totalForms = form.querySelector("#id_lines-TOTAL_FORMS");
+    const totalEl = form.querySelector("[data-order-total]");
+    const fmt = (n) => "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function refresh() {
+        let total = 0;
+        body.querySelectorAll(".line-row").forEach((row) => {
+            const product = row.querySelector("select");
+            const qty = row.querySelector("input[name$='-quantity']");
+            const price = row.querySelector("input[name$='-unit_price']");
+            const del = row.querySelector("input[name$='-DELETE']");
+            const meta = info[product.value];
+            price.placeholder = meta ? meta.price : "Catalog price";
+            const stockEl = row.querySelector(".line-stock");
+            stockEl.textContent = meta ? `${meta.stock} in stock` : "";
+            const unit = parseFloat(price.value || (meta ? meta.price : 0)) || 0;
+            const line = unit * (parseInt(qty.value, 10) || 0);
+            row.querySelector("[data-line-total]").textContent = fmt(line);
+            row.classList.toggle("is-removed", del && del.checked);
+            if (!(del && del.checked)) total += line;
+        });
+        totalEl.textContent = fmt(total);
+    }
+
+    form.querySelector("[data-add-line]").addEventListener("click", () => {
+        const index = parseInt(totalForms.value, 10);
+        const html = template.innerHTML.replace(/__prefix__/g, index);
+        body.insertAdjacentHTML("beforeend", html);
+        totalForms.value = index + 1;
+        refresh();
+    });
+
+    form.addEventListener("input", refresh);
+    form.addEventListener("change", refresh);
+    refresh();
+})();
+</script>
+{% endblock %}

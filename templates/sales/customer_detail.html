@@ -1,0 +1,72 @@
+{% extends "inventory/workspace.html" %}
+{% load humanize %}
+
+{% block title %}{{ customer.name }} · StockFlow{% endblock %}
+{% block breadcrumb %}Customers{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">CUSTOMER</span>
+        <h1>{{ customer.name }}</h1>
+        <p class="muted">{{ customer.code }}</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'customer-list' %}">Back to customers</a>
+</section>
+
+<div class="detail-grid">
+    <div class="detail-stack">
+        <section class="panel">
+            <span class="catalog-badge {% if customer.is_active %}badge-active{% endif %}">{{ customer.is_active|yesno:"Active,Archived" }}</span>
+            <dl class="facts">
+                <div><dt>Email</dt><dd>{{ customer.email|default:"—" }}</dd></div>
+                <div><dt>Phone</dt><dd>{{ customer.phone|default:"—" }}</dd></div>
+                <div><dt>GSTIN</dt><dd>{{ customer.gstin|default:"—" }}</dd></div>
+                <div><dt>Address</dt><dd>{{ customer.address|default:"—"|linebreaksbr }}</dd></div>
+            </dl>
+            {% if customer.notes %}<p class="muted" style="margin-top:14px">{{ customer.notes|linebreaksbr }}</p>{% endif %}
+            <div class="action-bar">
+                {% if perms.sales.add_salesorder and customer.is_active %}
+                    <a class="button button-primary" href="{% url 'order-create' %}?customer={{ customer.pk }}">New sales order</a>
+                {% endif %}
+                {% if perms.sales.change_customer %}
+                    <a class="button button-quiet" href="{% url 'customer-update' customer.pk %}">Edit</a>
+                    <form method="post" action="{% url 'customer-status' customer.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="{{ customer.is_active|yesno:'archive,restore' }}">
+                        <button class="button button-quiet" type="submit">{{ customer.is_active|yesno:"Archive,Restore" }}</button>
+                    </form>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if perms.sales.view_salesorder %}
+            <section class="panel">
+                <div class="panel-heading">
+                    <div><span class="eyebrow">SALES</span><h2>Recent orders</h2></div>
+                </div>
+                {% if orders %}
+                    <div class="table-scroll">
+                        <table class="catalog-table">
+                            <thead><tr><th>Order</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
+                            <tbody>
+                                {% for order in orders %}
+                                    <tr>
+                                        <td><a class="text-link" href="{% url 'order-detail' order.pk %}">{{ order.number }}</a></td>
+                                        <td>{{ order.created_at|date:"d M Y" }}</td>
+                                        <td class="money">₹{{ order.order_total|floatformat:2|intcomma }}</td>
+                                        <td>{% include "sales/_status_chip.html" %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="muted" style="margin-top:14px">No orders yet.</p>
+                {% endif %}
+            </section>
+        {% endif %}
+    </div>
+    <div class="detail-stack">{% include "includes/history.html" %}</div>
+</div>
+{% endblock %}

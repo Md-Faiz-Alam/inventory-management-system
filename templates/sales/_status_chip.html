@@ -1,0 +1,1 @@
+<span class="chip {% if order.status == 'fulfilled' %}chip-success{% elif order.status == 'cancelled' %}chip-danger{% elif order.status == 'confirmed' %}chip-warning{% else %}chip-info{% endif %}">{{ order.get_status_display }}</span>

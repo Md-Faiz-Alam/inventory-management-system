@@ -1,0 +1,41 @@
+{% load humanize %}
+<div id="results" data-results>
+    <div class="catalog-summary">
+        <strong>{{ page_obj.paginator.count }} order{{ page_obj.paginator.count|pluralize }}</strong>
+        <span>Latest first · Amounts in INR</span>
+    </div>
+
+    {% if page_obj.object_list %}
+        <div class="table-scroll" role="region" aria-label="Sales orders" tabindex="0">
+            <table class="catalog-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Order</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in page_obj %}
+                        <tr>
+                            <td><a class="text-link" href="{% url 'order-detail' order.pk %}"><strong class="product-name">{{ order.number }}</strong></a></td>
+                            <td>{{ order.customer.name }}<span class="product-sku">{{ order.customer.code }}</span></td>
+                            <td>{{ order.created_at|date:"d M Y" }}</td>
+                            <td class="money">₹{{ order.order_total|floatformat:2|intcomma }}</td>
+                            <td>{% include "sales/_status_chip.html" %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "includes/pagination.html" with label="Order" %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">⬆</div>
+            <h3>No sales orders found.</h3>
+            <p>Create a sales order for a customer to issue stock against it.</p>
+        </div>
+    {% endif %}
+</div>

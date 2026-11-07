@@ -1,0 +1,42 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Sales orders · StockFlow{% endblock %}
+{% block breadcrumb %}Sales orders{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">STOCK GOING OUT</span>
+        <h1>Sales orders</h1>
+        <p class="muted">Draft, confirm and fulfil customer orders. Fulfilment issues the stock.</p>
+    </div>
+    {% if perms.sales.add_salesorder %}
+        <a class="button button-primary" href="{% url 'order-create' %}">+ New sales order</a>
+    {% endif %}
+</section>
+
+<section class="panel catalog-panel">
+    <form
+        method="get"
+        class="catalog-filters"
+        role="search"
+        aria-label="Find sales orders"
+        hx-get="{% url 'order-list' %}"
+        hx-target="#results"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="input changed delay:300ms from:find input[type=search], change from:find select, submit"
+    >
+        {% for field in filter_form %}
+            <div>
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+            </div>
+        {% endfor %}
+        <button class="button button-primary" type="submit">Apply</button>
+        <a class="button button-quiet" href="{% url 'order-list' %}">Reset</a>
+    </form>
+
+    {% include "sales/_order_rows.html" %}
+</section>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Customers · StockFlow{% endblock %}
+{% block breadcrumb %}Customers{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">WHO YOU SELL TO</span>
+        <h1>Customers</h1>
+        <p class="muted">Customer contacts and their order history.</p>
+    </div>
+    {% if perms.sales.add_customer %}
+        <a class="button button-primary" href="{% url 'customer-create' %}">+ Add customer</a>
+    {% endif %}
+</section>
+
+<section class="panel catalog-panel">
+    <form
+        method="get"
+        class="catalog-filters"
+        role="search"
+        aria-label="Find customers"
+        hx-get="{% url 'customer-list' %}"
+        hx-target="#results"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="input changed delay:300ms from:find input[type=search], change from:find select, submit"
+    >
+        <div>
+            <label for="customer-search">Search</label>
+            <input id="customer-search" type="search" name="q" value="{{ query }}" maxlength="100" placeholder="Name, code, email, or phone" autocomplete="off">
+        </div>
+        <div>
+            <label for="customer-status">Status</label>
+            <select id="customer-status" name="status">
+                <option value="active" {% if selected_status == "active" %}selected{% endif %}>Active</option>
+                <option value="archived" {% if selected_status == "archived" %}selected{% endif %}>Archived</option>
+                <option value="all" {% if selected_status == "all" %}selected{% endif %}>All customers</option>
+            </select>
+        </div>
+        <button class="button button-primary" type="submit">Apply</button>
+        <a class="button button-quiet" href="{% url 'customer-list' %}">Reset</a>
+    </form>
+
+    {% include "sales/_customer_rows.html" %}
+</section>
+{% endblock %}

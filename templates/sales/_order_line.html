@@ -1,0 +1,13 @@
+<tr class="line-row">
+    <td>
+        {% for hidden in line.hidden_fields %}{{ hidden }}{% endfor %}
+        {{ line.product }}
+        <div class="line-stock"></div>
+        {% for error in line.product.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        {% for error in line.non_field_errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </td>
+    <td>{{ line.quantity }}{% for error in line.quantity.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</td>
+    <td>{{ line.unit_price }}{% for error in line.unit_price.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</td>
+    <td class="money" data-line-total>₹0.00</td>
+    <td>{{ line.DELETE }}</td>
+</tr>
