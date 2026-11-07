@@ -1,0 +1,36 @@
+# Render Blueprint: New -> Blueprint -> pick this repository.
+# The database is Neon (free, no expiry). Paste its connection string as DATABASE_URL.
+services:
+  - type: web
+    name: stockflow-inventory
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: bash build.sh
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /healthz/
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: DEMO_MODE
+        value: "true"
+      # Public visitors are view-only: one-click "Explore as guest", no password.
+      # Only your superuser can change anything. (To also publish Manager/Staff
+      # demo logins later, add DEMO_MANAGER_PASSWORD / DEMO_STAFF_PASSWORD here.)
+      - key: GUEST_ACCESS
+        value: "true"
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+      - key: COMPANY_NAME
+        value: StockFlow Demo Traders
+      - key: WEB_CONCURRENCY
+        value: "2"
