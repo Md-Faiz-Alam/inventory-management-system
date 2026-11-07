@@ -44,11 +44,19 @@ def snapshot(instance, fields):
 
 
 def diff(before, after):
-    """Return {field: [old, new]} for changed fields only."""
+    """Return {field: [old, new]} for changed fields only.
+
+    A missing value and an empty one count as the same, so creating a record
+    does not list every blank field as a change.
+    """
+
+    def norm(value):
+        return "" if value is None else value
+
     return {
         key: [before.get(key), after.get(key)]
         for key in after
-        if before.get(key) != after.get(key)
+        if norm(before.get(key)) != norm(after.get(key))
     }
 
 

@@ -74,3 +74,14 @@ class DashboardTests(TestCase):
     def test_member_without_catalog_gets_no_chart_data(self):
         self.client.force_login(make_user("nobody"))
         self.assertEqual(self.client.get(reverse("dashboard-data")).json(), {})
+
+
+class DiffTests(TestCase):
+    def test_blank_fields_are_not_reported_as_changes(self):
+        from .log import diff
+
+        self.assertEqual(
+            diff({}, {"name": "Acme", "notes": "", "gstin": None}),
+            {"name": [None, "Acme"]},
+        )
+        self.assertEqual(diff({"level": 0}, {"level": 5}), {"level": [0, 5]})
