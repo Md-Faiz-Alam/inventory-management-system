@@ -1,0 +1,53 @@
+{% load humanize %}
+<div id="results" data-results>
+    <div class="catalog-summary">
+        <strong>{{ page_obj.paginator.count }} purchase order{{ page_obj.paginator.count|pluralize }}</strong>
+        <span>Latest first · Costs in INR</span>
+    </div>
+
+    {% if page_obj.object_list %}
+        <div class="table-scroll" role="region" aria-label="Purchase orders" tabindex="0">
+            <table class="catalog-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Reference</th>
+                        <th scope="col">Supplier</th>
+                        <th scope="col">Product</th>
+                        <th scope="col">Received</th>
+                        <th scope="col">Unit cost</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in page_obj %}
+                        <tr>
+                            <td>
+                                <a class="text-link" href="{% url 'po-detail' order.pk %}"><strong class="product-name">{{ order.reference }}</strong></a>
+                                <span class="product-sku">{{ order.created_at|date:"d M Y" }}</span>
+                            </td>
+                            <td>{{ order.supplier.name }}</td>
+                            <td>
+                                <strong class="product-name">{{ order.product.name }}</strong>
+                                <span class="product-sku">{{ order.product.sku }}</span>
+                            </td>
+                            <td class="stock-quantity">{{ order.received_quantity|intcomma }} / {{ order.quantity|intcomma }}</td>
+                            <td class="money">{{ order.unit_cost|floatformat:2 }}</td>
+                            <td>
+                                {% with status=order.status %}
+                                    <span class="chip {% if status == 'Complete' %}chip-success{% elif status == 'Cancelled' %}chip-danger{% elif status == 'Partially received' %}chip-warning{% else %}chip-info{% endif %}">{{ status }}</span>
+                                {% endwith %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "includes/pagination.html" with label="Purchase order" %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon" aria-hidden="true">⬇</div>
+            <h3>No purchase orders here.</h3>
+            <p>Raise a purchase order when stock runs low, then receive deliveries against it.</p>
+        </div>
+    {% endif %}
+</div>

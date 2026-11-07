@@ -102,4 +102,35 @@
         {% endif %}
     </section>
 {% endif %}
+
+{% if purchase_orders %}
+    <section class="panel catalog-panel stock-section-after">
+        <div class="panel-heading">
+            <div>
+                <span class="eyebrow">PURCHASING</span>
+                <h2>Recent purchase orders</h2>
+            </div>
+            {% if perms.inventory.add_purchaseorder and supplier.is_active %}
+                <a class="text-link" href="{% url 'po-create' %}?supplier={{ supplier.pk }}">+ New order</a>
+            {% endif %}
+        </div>
+        <div class="table-scroll">
+            <table class="catalog-table">
+                <thead><tr><th>Reference</th><th>Product</th><th>Received</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for order in purchase_orders %}
+                        <tr>
+                            <td><a class="text-link" href="{% url 'po-detail' order.pk %}">{{ order.reference }}</a></td>
+                            <td>{{ order.product.name }}</td>
+                            <td>{{ order.received_quantity }} / {{ order.quantity }}</td>
+                            <td><span class="chip">{{ order.status }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endif %}
+
+{% if history %}<div class="stock-section-after">{% include "includes/history.html" %}</div>{% endif %}
 {% endblock %}

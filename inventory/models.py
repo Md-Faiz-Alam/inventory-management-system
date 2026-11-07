@@ -94,6 +94,8 @@ class StockMovement(models.Model):
     if TYPE_CHECKING:
         product_id: int
         actor_id: int
+        purchase_order_id: int | None
+        reversal_of_id: int | None
 
         def get_kind_display(self) -> str: ...
 
@@ -111,6 +113,21 @@ class StockMovement(models.Model):
         on_delete=models.PROTECT,
         related_name="stock_movements",
     )
+    purchase_order = models.ForeignKey(
+        "PurchaseOrder",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="movements",
+    )
+    reversal_of = models.OneToOneField(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="reversal"
+    )
+    document_reference = models.CharField(max_length=100, blank=True)
+    unit_cost = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    counted_quantity = models.PositiveBigIntegerField(null=True, blank=True)
     operation_id = models.UUIDField(unique=True, editable=False)
     kind = models.CharField(max_length=10, choices=Kind.choices)
     quantity = models.PositiveBigIntegerField(
@@ -129,6 +146,7 @@ class StockMovement(models.Model):
         permissions = [
             ("receive_stock", "Can receive stock"),
             ("issue_stock", "Can issue stock"),
+            ("correct_stock", "Can reverse movements and record stocktakes"),
         ]
         indexes = [
             models.Index(
@@ -137,6 +155,24 @@ class StockMovement(models.Model):
             )
         ]
         constraints = [
+            models.CheckConstraint(
+                condition=models.Q(unit_cost__isnull=True) | models.Q(unit_cost__gte=0),
+                name="movement_cost_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(counted_quantity__isnull=True)
+                | models.Q(
+                    balance_after=models.F("counted_quantity"),
+                    purchase_order__isnull=True,
+                    reversal_of__isnull=True,
+                ),
+                name="movement_count_matches_balance",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(reversal_of__isnull=True)
+                | ~models.Q(pk=models.F("reversal_of")),
+                name="movement_not_own_reversal",
+            ),
             models.CheckConstraint(
                 condition=models.Q(quantity__gt=0),
                 name="stock_movement_quantity_positive",
@@ -150,15 +186,13 @@ class StockMovement(models.Model):
                     models.Q(
                         kind="receive",
                         quantity=(
-                            models.F("balance_after")
-                            - models.F("balance_before")
+                            models.F("balance_after") - models.F("balance_before")
                         ),
                     )
                     | models.Q(
                         kind="issue",
                         quantity=(
-                            models.F("balance_before")
-                            - models.F("balance_after")
+                            models.F("balance_before") - models.F("balance_after")
                         ),
                     )
                 ),
@@ -168,6 +202,59 @@ class StockMovement(models.Model):
 
     def __str__(self):
         return (
-            f"{self.get_kind_display()}: "
-            f"{self.quantity} for product {self.product_id}"
+            f"{self.get_kind_display()}: {self.quantity} for product {self.product_id}"
         )
+
+
+class PurchaseOrder(models.Model):
+    """An immutable, single-product order; receipts may arrive in parts."""
+
+    if TYPE_CHECKING:
+        supplier_id: int
+        product_id: int
+        actor_id: int
+
+    reference = models.CharField(max_length=80, unique=True)
+    supplier = models.ForeignKey("suppliers.Supplier", on_delete=models.PROTECT)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    quantity = models.PositiveBigIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(MAX_STOCK_QUANTITY)]
+    )
+    received_quantity = models.PositiveBigIntegerField(default=0, editable=False)
+    unit_cost = models.DecimalField(
+        max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0"))]
+    )
+    cancelled = models.BooleanField(default=False, editable=False)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0), name="po_quantity_positive"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(received_quantity__lte=models.F("quantity")),
+                name="po_received_within_order",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(unit_cost__gte=0), name="po_cost_nonnegative"
+            ),
+            models.UniqueConstraint(Lower("reference"), name="po_reference_ci_unique"),
+        ]
+
+    @property
+    def outstanding(self):
+        return self.quantity - self.received_quantity
+
+    @property
+    def status(self):
+        if self.cancelled:
+            return "Cancelled"
+        if self.received_quantity == self.quantity:
+            return "Complete"
+        return "Partially received" if self.received_quantity else "Open"
+
+    def __str__(self):
+        return self.reference

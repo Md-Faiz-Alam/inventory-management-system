@@ -10,6 +10,8 @@ from django.urls import reverse
 
 from inventory.models import Product, StockBalance
 
+from config.editing import edit_token
+
 from .forms import SupplierForm
 from .models import Supplier
 from .views import save_supplier_form
@@ -83,6 +85,7 @@ class SupplierTests(TestCase):
             "address": "Example business address",
             "notes": "Delivery contact",
             "products": [str(self.product.pk)],
+            "edit_token": edit_token(self.supplier),
         }
         data.update(overrides)
         return data

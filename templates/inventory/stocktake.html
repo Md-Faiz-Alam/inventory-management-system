@@ -1,0 +1,37 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Stocktake · StockFlow{% endblock %}
+{% block breadcrumb %}Stock control{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">PHYSICAL COUNT</span>
+        <h1>Stocktake</h1>
+        <p class="muted">{{ product.name }} · {{ product.sku }}</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'stock-list' %}">Back to stock</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <div class="stock-form-summary">
+        <div>
+            <span class="eyebrow">SYSTEM BALANCE</span>
+            <strong>{{ product.on_hand }} <small>units</small></strong>
+        </div>
+        <span class="catalog-badge badge-low">Adjustment</span>
+    </div>
+    <p class="muted" style="margin:14px 0 0">
+        Enter what you counted. The difference is recorded as a receipt or issue, so the movement history explains the change.
+    </p>
+
+    <form method="post" class="catalog-form">
+        {% csrf_token %}
+        {% include "includes/form_fields.html" %}
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Record stocktake</button>
+            <a class="button button-quiet" href="{% url 'stock-list' %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

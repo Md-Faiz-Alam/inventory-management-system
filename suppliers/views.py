@@ -11,6 +11,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
+from audit.log import diff, history_for, record, snapshot
+from audit.models import AuditEntry
+from config.htmx import render_list
 from inventory.views import pagination_query, workspace_context
 
 from .forms import SUPPLIER_DETAIL_FIELDS, SupplierForm
@@ -24,10 +27,12 @@ def save_supplier_form(form):
             supplier = form.save(commit=False)
 
             if supplier.pk:
-                get_object_or_404(
+                current = get_object_or_404(
                     Supplier.objects.select_for_update(),
                     pk=supplier.pk,
                 )
+                if not form.matches_current(current):
+                    return None
                 supplier.save(
                     update_fields=[
                         *SUPPLIER_DETAIL_FIELDS,
@@ -101,7 +106,12 @@ def supplier_list(request):
             "pagination_query": pagination_query(request),
         }
     )
-    return render(request, "suppliers/supplier_list.html", context)
+    return render_list(
+        request,
+        "suppliers/supplier_list.html",
+        "suppliers/_supplier_rows.html",
+        context,
+    )
 
 
 @never_cache
@@ -115,8 +125,14 @@ def supplier_detail(request, pk):
         {
             "active_page": "suppliers",
             "supplier": supplier,
+            "history": history_for(supplier),
         }
     )
+
+    if request.user.has_perm("inventory.view_purchaseorder"):
+        context["purchase_orders"] = supplier.purchaseorder_set.select_related(
+            "product"
+        )[:8]
 
     if request.user.has_perm("inventory.view_product"):
         context["product_page"] = Paginator(
@@ -146,6 +162,7 @@ def supplier_edit(request, pk=None):
         if pk is not None
         else None
     )
+    before = snapshot(supplier, SUPPLIER_DETAIL_FIELDS) if supplier else {}
     form = SupplierForm(
         request.POST if request.method == "POST" else None,
         instance=supplier,
@@ -157,6 +174,13 @@ def supplier_edit(request, pk=None):
 
         if saved_supplier is not None:
             outcome = "updated" if pk is not None else "created"
+            record(
+                request,
+                AuditEntry.Action.UPDATE if pk is not None else AuditEntry.Action.CREATE,
+                f"{outcome.title()} supplier {saved_supplier.name}",
+                obj=saved_supplier,
+                changes=diff(before, snapshot(saved_supplier, SUPPLIER_DETAIL_FIELDS)),
+            )
             messages.success(
                 request,
                 f"{saved_supplier.name} was {outcome}.",
@@ -213,6 +237,12 @@ def supplier_status(request, pk):
             )
 
         outcome = "restored" if action == "restore" else "archived"
+        record(
+            request,
+            AuditEntry.Action.STATUS,
+            f"{outcome.title()} supplier {supplier.name}",
+            obj=supplier,
+        )
         messages.success(
             request,
             f"{supplier.name} was {outcome}.",

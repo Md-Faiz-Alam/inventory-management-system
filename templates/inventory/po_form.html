@@ -1,0 +1,26 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}{{ page_title }} · StockFlow{% endblock %}
+{% block breadcrumb %}Purchase orders{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">ORDER FROM A SUPPLIER</span>
+        <h1>{{ page_title }}</h1>
+        <p class="muted">Orders cannot be edited after creation. Cancel and re-raise if terms change.</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'po-list' %}">Back to purchase orders</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <form method="post" class="catalog-form">
+        {% csrf_token %}
+        {% include "includes/form_fields.html" %}
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Create purchase order</button>
+            <a class="button button-quiet" href="{% url 'po-list' %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

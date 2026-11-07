@@ -1,0 +1,34 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Receive {{ order.reference }} · StockFlow{% endblock %}
+{% block breadcrumb %}Purchase orders{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">RECEIVE A DELIVERY</span>
+        <h1>{{ order.reference }}</h1>
+        <p class="muted">{{ order.product.name }} · {{ order.product.sku }} from {{ order.supplier.name }}</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'po-detail' order.pk %}">Back to order</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <div class="stock-form-summary">
+        <div>
+            <span class="eyebrow">OUTSTANDING</span>
+            <strong>{{ order.outstanding }} <small>of {{ order.quantity }} units</small></strong>
+        </div>
+        <span class="catalog-badge badge-active">Stock incoming</span>
+    </div>
+
+    <form method="post" class="catalog-form">
+        {% csrf_token %}
+        {% include "includes/form_fields.html" %}
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Record receipt</button>
+            <a class="button button-quiet" href="{% url 'po-detail' order.pk %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

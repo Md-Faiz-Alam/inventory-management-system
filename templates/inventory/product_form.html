@@ -16,6 +16,7 @@
 <section class="panel catalog-form-panel">
     <form method="post" class="catalog-form">
         {% csrf_token %}
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
 
         {% if form.errors %}
             <div class="notice notice-error" role="alert">
@@ -25,7 +26,7 @@
         {% endif %}
 
         <div class="form-grid">
-            {% for field in form %}
+            {% for field in form.visible_fields %}
                 <div class="field {% if field.name == 'description' %}field-wide{% endif %}">
                     <label for="{{ field.id_for_label }}">
                         {{ field.label }}{% if field.field.required %} *{% endif %}
@@ -50,4 +51,6 @@
         </div>
     </form>
 </section>
+
+{% if history %}<div class="stock-section-after">{% include "includes/history.html" %}</div>{% endif %}
 {% endblock %}

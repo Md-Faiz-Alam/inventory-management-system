@@ -1,0 +1,95 @@
+{% extends "inventory/workspace.html" %}
+{% load humanize %}
+
+{% block title %}{{ order.reference }} · StockFlow{% endblock %}
+{% block breadcrumb %}Purchase orders{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">PURCHASE ORDER</span>
+        <h1>{{ order.reference }}</h1>
+        <p class="muted">Raised by {{ order.actor.username }} on {{ order.created_at|date:"d M Y, H:i" }}</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'po-list' %}">Back to purchase orders</a>
+</section>
+
+<div class="detail-grid">
+    <div class="detail-stack">
+        <section class="panel">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">STATUS</span>
+                    <h2>
+                        {% with status=order.status %}
+                            <span class="chip {% if status == 'Complete' %}chip-success{% elif status == 'Cancelled' %}chip-danger{% elif status == 'Partially received' %}chip-warning{% else %}chip-info{% endif %}">{{ status }}</span>
+                        {% endwith %}
+                    </h2>
+                </div>
+                <strong>{{ progress }}% received</strong>
+            </div>
+            <div class="progress" role="progressbar" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ progress }}%"></span></div>
+
+            <dl class="facts">
+                <div><dt>Supplier</dt><dd>{% if perms.suppliers.view_supplier %}<a class="text-link" href="{% url 'supplier-detail' order.supplier.pk %}">{{ order.supplier.name }}</a>{% else %}{{ order.supplier.name }}{% endif %}</dd></div>
+                <div><dt>Product</dt><dd>{{ order.product.name }}<br><small class="muted">{{ order.product.sku }}</small></dd></div>
+                <div><dt>Ordered</dt><dd>{{ order.quantity|intcomma }} units</dd></div>
+                <div><dt>Outstanding</dt><dd>{{ order.outstanding|intcomma }} units</dd></div>
+                <div><dt>Unit cost</dt><dd class="money">₹{{ order.unit_cost|floatformat:2|intcomma }}</dd></div>
+                <div><dt>Order value</dt><dd class="money">₹{{ order_value|floatformat:2|intcomma }}</dd></div>
+            </dl>
+
+            <div class="action-bar">
+                {% if not order.cancelled and order.outstanding and perms.inventory.receive_stock and perms.inventory.change_purchaseorder %}
+                    <a class="button button-primary" href="{% url 'po-receive' order.pk %}">Receive delivery</a>
+                {% endif %}
+                <a class="button button-quiet" href="{% url 'po-pdf' order.pk %}">Download PDF</a>
+                {% if not order.cancelled and order.outstanding and perms.inventory.change_purchaseorder %}
+                    <form method="post" action="{% url 'po-cancel' order.pk %}" data-confirm="Cancel {{ order.reference }}? Stock already received stays on hand.">
+                        {% csrf_token %}
+                        <button class="button button-danger" type="submit">Cancel order</button>
+                    </form>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-heading">
+                <div>
+                    <span class="eyebrow">DELIVERIES</span>
+                    <h2>Receipts against this order</h2>
+                </div>
+            </div>
+            {% if receipts %}
+                <div class="table-scroll">
+                    <table class="catalog-table">
+                        <thead><tr><th>Time</th><th>Movement</th><th>Quantity</th><th>Document</th><th>By</th><th></th></tr></thead>
+                        <tbody>
+                            {% for movement in receipts %}
+                                <tr>
+                                    <td class="movement-time">{{ movement.created_at|date:"d M Y, H:i" }}</td>
+                                    <td><span class="catalog-badge {% if movement.kind == 'receive' %}badge-active{% else %}badge-low{% endif %}">{{ movement.get_kind_display }}</span></td>
+                                    <td class="stock-quantity">{% if movement.kind == "receive" %}+{% else %}−{% endif %}{{ movement.quantity }}</td>
+                                    <td>{{ movement.document_reference|default:"—" }}{% if movement.reversal_of_id %}<br><span class="chip chip-info">Reversal of #{{ movement.reversal_of_id }}</span>{% endif %}</td>
+                                    <td>{{ movement.actor.username }}</td>
+                                    <td>
+                                        {% if perms.inventory.correct_stock and movement.kind == "receive" and not movement.reversal_of_id %}
+                                            <a class="text-link" href="{% url 'movement-reverse' movement.pk %}">Reverse</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="muted" style="margin-top:14px">Nothing received yet.</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <div class="detail-stack">
+        {% include "includes/history.html" %}
+    </div>
+</div>
+{% endblock %}

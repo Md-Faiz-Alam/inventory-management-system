@@ -1,0 +1,49 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Purchase orders · StockFlow{% endblock %}
+{% block breadcrumb %}Purchase orders{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">STOCK COMING IN</span>
+        <h1>Purchase orders</h1>
+        <p class="muted">Orders raised with suppliers and how much of each has arrived.</p>
+    </div>
+    {% if perms.inventory.add_purchaseorder %}
+        <a class="button button-primary" href="{% url 'po-create' %}">+ New purchase order</a>
+    {% endif %}
+</section>
+
+<section class="panel catalog-panel">
+    <form
+        method="get"
+        class="catalog-filters"
+        role="search"
+        aria-label="Find purchase orders"
+        hx-get="{% url 'po-list' %}"
+        hx-target="#results"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="input changed delay:300ms from:find input[type=search], change from:find select, submit"
+    >
+        <div>
+            <label for="po-search">Search</label>
+            <input id="po-search" type="search" name="q" value="{{ query }}" maxlength="100" placeholder="Reference, supplier, or product" autocomplete="off">
+        </div>
+        <div>
+            <label for="po-status">Status</label>
+            <select id="po-status" name="status">
+                <option value="open" {% if selected_status == "open" %}selected{% endif %}>Open</option>
+                <option value="complete" {% if selected_status == "complete" %}selected{% endif %}>Complete</option>
+                <option value="cancelled" {% if selected_status == "cancelled" %}selected{% endif %}>Cancelled</option>
+                <option value="all" {% if selected_status == "all" %}selected{% endif %}>All orders</option>
+            </select>
+        </div>
+        <button class="button button-primary" type="submit">Apply</button>
+        <a class="button button-quiet" href="{% url 'po-list' %}">Reset</a>
+    </form>
+
+    {% include "inventory/_po_rows.html" %}
+</section>
+{% endblock %}

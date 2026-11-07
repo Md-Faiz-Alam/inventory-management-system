@@ -1,0 +1,39 @@
+{% extends "inventory/workspace.html" %}
+
+{% block title %}Reverse movement · StockFlow{% endblock %}
+{% block breadcrumb %}Movements{% endblock %}
+
+{% block workspace_content %}
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">CORRECTION</span>
+        <h1>Reverse movement #{{ movement.pk }}</h1>
+        <p class="muted">The original record stays. An exact opposite movement is added.</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'movement-list' %}">Back to movements</a>
+</section>
+
+<section class="panel catalog-form-panel">
+    <dl class="facts" style="margin-top:0">
+        <div><dt>Product</dt><dd>{{ movement.product.name }}</dd></div>
+        <div><dt>Movement</dt><dd>{{ movement.get_kind_display }}</dd></div>
+        <div><dt>Quantity</dt><dd>{{ movement.quantity }}</dd></div>
+        <div><dt>Recorded</dt><dd>{{ movement.created_at|date:"d M Y, H:i" }} by {{ movement.actor.username }}</dd></div>
+        {% if movement.purchase_order %}<div><dt>Purchase order</dt><dd>{{ movement.purchase_order.reference }}</dd></div>{% endif %}
+    </dl>
+    <p class="muted" style="margin-top:14px">Reason: {{ movement.reason }}</p>
+
+    {% if blocked %}
+        <div class="notice notice-error" role="alert">{{ blocked }}</div>
+    {% else %}
+        <form method="post" class="catalog-form">
+            {% csrf_token %}
+            {% include "includes/form_fields.html" %}
+            <div class="form-actions">
+                <button class="button button-danger" type="submit">Reverse this movement</button>
+                <a class="button button-quiet" href="{% url 'movement-list' %}">Cancel</a>
+            </div>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}

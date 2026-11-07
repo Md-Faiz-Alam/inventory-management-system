@@ -3,7 +3,7 @@
 from django.contrib import admin
 
 from .forms import ProductForm
-from .models import Product, StockBalance, StockMovement
+from .models import Product, PurchaseOrder, StockBalance, StockMovement
 
 
 @admin.register(Product)
@@ -65,6 +65,8 @@ class StockMovementAdmin(ReadOnlyStockAdmin):
         "balance_before",
         "balance_after",
         "actor",
+        "purchase_order",
+        "document_reference",
     ]
     list_filter = ["kind"]
     search_fields = [
@@ -73,7 +75,7 @@ class StockMovementAdmin(ReadOnlyStockAdmin):
         "reason",
         "actor__username",
     ]
-    list_select_related = ["product", "actor"]
+    list_select_related = ["product", "actor", "purchase_order"]
     readonly_fields = [
         "product",
         "actor",
@@ -81,7 +83,40 @@ class StockMovementAdmin(ReadOnlyStockAdmin):
         "kind",
         "quantity",
         "reason",
+        "purchase_order",
+        "reversal_of",
+        "document_reference",
+        "unit_cost",
+        "counted_quantity",
         "balance_before",
         "balance_after",
+        "created_at",
+    ]
+
+
+@admin.register(PurchaseOrder)
+class PurchaseOrderAdmin(ReadOnlyStockAdmin):
+    list_display = [
+        "reference",
+        "supplier",
+        "product",
+        "quantity",
+        "received_quantity",
+        "unit_cost",
+        "cancelled",
+        "created_at",
+    ]
+    list_filter = ["cancelled"]
+    search_fields = ["reference", "supplier__name", "product__name", "product__sku"]
+    list_select_related = ["supplier", "product"]
+    readonly_fields = [
+        "reference",
+        "supplier",
+        "product",
+        "quantity",
+        "received_quantity",
+        "unit_cost",
+        "cancelled",
+        "actor",
         "created_at",
     ]

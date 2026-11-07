@@ -19,6 +19,8 @@ from django.db import (
 from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 
+from config.editing import edit_token
+
 from .forms import ProductForm
 from .models import (
     MAX_STOCK_QUANTITY,
@@ -39,9 +41,16 @@ class WorkspaceTests(TestCase):
             password="Workspace-test-password-482!",
         )
 
-    def test_anonymous_visitor_is_redirected_to_login(self):
+    def test_anonymous_visitor_sees_public_landing_page(self):
         response = self.client.get(reverse("overview"))
-        self.assertRedirects(response, f"{reverse('login')}?next=/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "landing.html")
+        self.assertContains(response, "Try the live demo")
+        self.assertNotContains(response, "Sign out")
+
+    def test_anonymous_visitor_is_redirected_to_login(self):
+        response = self.client.get(reverse("product-list"))
+        self.assertRedirects(response, f"{reverse('login')}?next=/products/")
 
     def test_login_page_renders(self):
         response = self.client.get(reverse("login"))
@@ -163,6 +172,7 @@ class ProductCatalogTests(TestCase):
             "description": "A compact wireless mouse.",
             "unit_price": "799.00",
             "reorder_level": "4",
+            "edit_token": edit_token(self.product),
         }
         data.update(overrides)
         return data
@@ -568,6 +578,7 @@ class StockEngineTests(TestCase):
                 "description": "",
                 "unit_price": "10.00",
                 "reorder_level": "5",
+                "edit_token": edit_token(self.product),
             },
         )
         self.assertRedirects(response, reverse("product-list"))
@@ -1079,6 +1090,7 @@ class StockWebTests(TestCase):
                 "description": "",
                 "unit_price": "1.00",
                 "reorder_level": "5",
+                "edit_token": edit_token(self.product),
             },
             instance=Product.objects.get(pk=self.product.pk),
         )

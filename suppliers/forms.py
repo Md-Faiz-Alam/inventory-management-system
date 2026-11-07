@@ -3,6 +3,7 @@
 from typing import cast
 
 from django import forms
+from config.editing import ConcurrentEditForm
 from django.db.models import Q
 
 from inventory.models import Product
@@ -21,7 +22,7 @@ SUPPLIER_DETAIL_FIELDS = (
 )
 
 
-class SupplierForm(forms.ModelForm):
+class SupplierForm(ConcurrentEditForm):
     class Meta:
         model = Supplier
         fields = [*SUPPLIER_DETAIL_FIELDS, "products"]
@@ -51,8 +52,7 @@ class SupplierForm(forms.ModelForm):
 
         if self.instance.pk:
             products = Product.objects.filter(
-                Q(is_active=True)
-                | Q(suppliers__pk=self.instance.pk)
+                Q(is_active=True) | Q(suppliers__pk=self.instance.pk)
             ).distinct()
 
         product_field = cast(
