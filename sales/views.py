@@ -98,7 +98,9 @@ def customer_detail(request, pk):
         }
     )
     if request.user.has_perm("sales.view_salesorder"):
-        context["orders"] = customer.orders.annotate(order_total=ORDER_TOTAL)[:10]
+        context["orders"] = customer.orders.annotate(order_total=ORDER_TOTAL).order_by(
+            "-created_at", "-pk"
+        )[:10]
     return render(request, "sales/customer_detail.html", context)
 
 
@@ -189,8 +191,12 @@ def customer_status(request, pk):
 @permission_required("sales.view_salesorder", raise_exception=True)
 def order_list(request):
     form = SalesFilterForm(request.GET)
-    orders = SalesOrder.objects.select_related("customer").annotate(
-        order_total=ORDER_TOTAL
+    # Totals use GROUP BY, which drops the model's default ordering, so order explicitly
+    # to keep pagination stable.
+    orders = (
+        SalesOrder.objects.select_related("customer")
+        .annotate(order_total=ORDER_TOTAL)
+        .order_by("-created_at", "-pk")
     )
     if form.is_valid():
         if form.cleaned_data["q"]:
