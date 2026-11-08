@@ -17,9 +17,7 @@ Built with Django and PostgreSQL as a BCA Semester 6 major project.
 Click **Explore as guest** for a read-only tour of every page; no sign-up or password is
 needed. The site runs on Render's free plan, which sleeps after 15 minutes without
 visitors, so the first page can take up to a minute to load. If the site is unavailable,
-the screenshots below show every screen.
-
-![StockFlow analytics dashboard](docs/screenshots/02-dashboard.png)
+the [screenshots](#screenshots) show every screen.
 
 ## Contents
 
@@ -39,17 +37,20 @@ the screenshots below show every screen.
 
 ## Screenshots
 
-| | |
-|---|---|
-| ![Public landing page with live figures and guest access](docs/screenshots/01-landing-page.jpg) **Landing page:** live figures and one-click guest access | ![Stock control filtered to low stock](docs/screenshots/03-stock-control.png) **Stock control:** health badges, receive/issue/count and reorder shortcuts |
-| ![Purchase order with delivery progress](docs/screenshots/04-purchase-order.png) **Purchase order:** partial deliveries, progress and PDF download | ![Tax invoice generated as PDF](docs/screenshots/05-tax-invoice-pdf.png) **Tax invoice (PDF):** generated for a fulfilled sales order |
-| ![Activity log with field-level changes](docs/screenshots/06-activity-log.png) **Activity log:** who changed what, with old and new values | ![Users and roles management](docs/screenshots/07-users-and-roles.png) **Users & roles:** Admin, Manager, Staff and read-only Viewer |
-| ![REST API documentation in Swagger](docs/screenshots/08-rest-api-docs.png) **REST API:** interactive Swagger documentation | ![Sign-in page](docs/screenshots/09-sign-in.jpg) **Sign-in:** with a read-only guest option |
+Screenshots of every main screen are in [`docs/screenshots/`](docs/screenshots/):
 
-<p align="center">
-  <img src="docs/screenshots/10-mobile-dashboard.png" alt="StockFlow dashboard on a mobile phone" width="260"><br>
-  <em>Responsive layout on a phone</em>
-</p>
+| Screen | Shows |
+|---|---|
+| [Landing page](docs/screenshots/01-landing-page.jpg) | Live figures and one-click guest access |
+| [Dashboard](docs/screenshots/02-dashboard.png) | Key figures and charts |
+| [Stock control](docs/screenshots/03-stock-control.png) | Health badges, receive/issue/count and reorder shortcuts |
+| [Purchase order](docs/screenshots/04-purchase-order.png) | Partial deliveries, progress and PDF download |
+| [Tax invoice (PDF)](docs/screenshots/05-tax-invoice-pdf.png) | Invoice generated for a fulfilled sales order |
+| [Activity log](docs/screenshots/06-activity-log.png) | Who changed what, with old and new values |
+| [Users and roles](docs/screenshots/07-users-and-roles.png) | Admin, Manager, Staff and read-only Viewer |
+| [REST API docs](docs/screenshots/08-rest-api-docs.png) | Interactive Swagger documentation |
+| [Sign-in](docs/screenshots/09-sign-in.jpg) | Sign-in with a read-only guest option |
+| [Mobile view](docs/screenshots/10-mobile-dashboard.png) | Dashboard on a phone |
 
 ## Features
 
