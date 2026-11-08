@@ -1,84 +1,197 @@
 ﻿# StockFlow: Inventory Management System
 
-A full-stack inventory management web application built with Django and PostgreSQL.
-It covers the whole stock lifecycle: products, stock control, purchase orders to
-suppliers, sales orders to customers, analytics, role-based access, an audit trail,
-PDF documents and a REST API.
+[![Django CI](https://github.com/Md-Faiz-Alam/inventory-management-system/actions/workflows/ci.yml/badge.svg)](https://github.com/Md-Faiz-Alam/inventory-management-system/actions/workflows/ci.yml)
 
-BCA Semester 6 major project.
+StockFlow is a web-based inventory management system for small and medium businesses.
+It keeps an exact, real-time record of every product and every unit that comes in or
+goes out, with who made the change and why. On top of that record it manages suppliers,
+purchase orders, customers and sales orders, produces PDF invoices and reports, and gives
+managers a live dashboard of what needs reordering.
 
-## Highlights
+Built with Django and PostgreSQL as a BCA Semester 6 major project.
 
-| Area | What it does |
+### Live demo
+
+**https://stockflow-inventory-0qr7.onrender.com**
+
+Click **Explore as guest** for a read-only tour of every page; no sign-up or password is
+needed. The site runs on Render's free plan, which sleeps after 15 minutes without
+visitors, so the first page can take up to a minute to load. If the site is unavailable,
+the screenshots below show every screen.
+
+![StockFlow analytics dashboard](docs/screenshots/02-dashboard.png)
+
+## Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Roles and access](#roles-and-access)
+- [Architecture](#architecture)
+- [Technology](#technology)
+- [Run it locally](#run-it-locally)
+- [Deploy for free (Render + Neon)](#deploy-for-free-render--neon)
+- [REST API](#rest-api)
+- [Testing](#testing)
+- [Project structure](#project-structure)
+- [Design notes and limits](#design-notes-and-limits)
+- [Author](#author)
+
+## Screenshots
+
+| | |
 |---|---|
-| Dashboard | KPI cards (stock value, low/out of stock, open POs, monthly sales), Chart.js charts (30-day stock flow, stock health, value by category, fastest movers), low-stock alert bell that refreshes every minute |
-| Products & stock | Catalog with unique SKUs and archive/restore; receive and issue stock with row locking, duplicate-submit protection and running balances |
-| Corrections | Reverse any movement with an exact opposite record; stocktake adjusts stock to a physical count |
-| Purchasing | Purchase orders to suppliers, partial deliveries against them, cancellation, PDF purchase order |
-| Sales | Customers, multi-line sales orders (draft → confirmed → fulfilled), atomic fulfilment that rolls back on any shortage, PDF quotation/invoice |
-| Roles & users | Admin, Manager and Staff roles; user management; profile and password change; login lockout after repeated failures |
-| Audit log | Every create, edit, status change, stock operation, order step and sign-in, with field-level changes and IP |
-| Reports | Stock and movement reports with filters, CSV export (up to 10,000 rows) and PDF export |
-| REST API | Products, suppliers, customers, stock movements, purchase and sales orders; token or session auth; Swagger docs at `/api/docs/` |
-| UI | Live search and filtering with HTMX, responsive layout, light/dark themes, public landing page |
-| Ops | Health check, WhiteNoise static files, HTTPS hardening, CI on PostgreSQL 17, one-click Render blueprint |
+| ![Public landing page with live figures and guest access](docs/screenshots/01-landing-page.jpg) **Landing page:** live figures and one-click guest access | ![Stock control filtered to low stock](docs/screenshots/03-stock-control.png) **Stock control:** health badges, receive/issue/count and reorder shortcuts |
+| ![Purchase order with delivery progress](docs/screenshots/04-purchase-order.png) **Purchase order:** partial deliveries, progress and PDF download | ![Tax invoice generated as PDF](docs/screenshots/05-tax-invoice-pdf.png) **Tax invoice (PDF):** generated for a fulfilled sales order |
+| ![Activity log with field-level changes](docs/screenshots/06-activity-log.png) **Activity log:** who changed what, with old and new values | ![Users and roles management](docs/screenshots/07-users-and-roles.png) **Users & roles:** Admin, Manager, Staff and read-only Viewer |
+| ![REST API documentation in Swagger](docs/screenshots/08-rest-api-docs.png) **REST API:** interactive Swagger documentation | ![Sign-in page](docs/screenshots/09-sign-in.jpg) **Sign-in:** with a read-only guest option |
 
-## Technology
+<p align="center">
+  <img src="docs/screenshots/10-mobile-dashboard.png" alt="StockFlow dashboard on a mobile phone" width="260"><br>
+  <em>Responsive layout on a phone</em>
+</p>
 
-Python 3.11 · Django 5.2 · PostgreSQL 17 · HTMX 2 · Chart.js 4 ·
-Django REST Framework · drf-spectacular · xhtml2pdf · WhiteNoise · Gunicorn ·
-GitHub Actions · Render (web) + Neon (database).
+## Features
+
+**Inventory**
+- Product catalogue with unique SKUs, categories, unit prices and reorder levels.
+  Products are archived, never deleted, so their history is kept.
+- Receive and issue stock through one transactional service. Stock can never go negative,
+  and a double click or page refresh does not record the same movement twice.
+- Complete movement history with the user, reason and balance before and after.
+- Corrections without editing history: **reverse** a movement (an exact opposite entry)
+  or record a **stocktake** that adjusts stock to a physical count.
+- Low-stock and out-of-stock indicators, plus a top-bar alert that refreshes every minute.
+
+**Purchasing and sales**
+- Suppliers linked to the products they provide.
+- Purchase orders to suppliers, received in one or several deliveries with a delivery
+  document number. Open orders can be cancelled.
+- Customers and multi-line sales orders that move from Draft → Confirmed → Fulfilled.
+  Fulfilment issues stock for every line in one transaction; if any line is short,
+  nothing is issued.
+
+**Insights and documents**
+- Dashboard with stock value, product and unit totals, low and out-of-stock counts, open
+  purchase orders and sales this month, plus charts: stock in vs. out (last 30 days),
+  stock health, stock value by category and the fastest-moving products.
+- Stock report and movement report with search and date filters, downloadable as CSV or PDF.
+- PDF purchase orders, and PDF tax invoices (fulfilled orders) or quotations (open orders).
+
+**Access and security**
+- Four roles (Admin, Manager, Staff, Viewer) and a one-click, read-only guest login.
+- User management: create users, change roles, deactivate accounts and set new passwords.
+- Account lock for 15 minutes after five failed sign-ins, on the sign-in page and the API.
+- Activity log of every create, edit, status change, stock operation, order step and
+  sign-in, with old and new values and the IP address.
+- Protection against two people overwriting each other's edits on the same record.
+- HTTPS only, secure cookies, CSRF protection and security headers in production.
+
+**Interface and integration**
+- Live search and filtering without page reloads (HTMX) on every list.
+- Responsive layout for desktop and mobile, with light and dark themes.
+- Public landing page showing live figures from the database.
+- REST API with token sign-in and interactive Swagger documentation.
+
+## How it works
+
+A typical day in StockFlow follows the path of the goods:
+
+1. **Catalogue:** a Manager adds products (SKU, price, reorder level) and suppliers, and
+   links each supplier to the products it provides.
+2. **Spot what is running low:** the dashboard, the alert bell and the stock page show
+   every product at or below its reorder level.
+3. **Purchase:** from a low-stock product the Manager clicks *Reorder*. The purchase order
+   form is pre-filled with a linked supplier, the catalogue price and a suggested quantity.
+   The order can be downloaded as a PDF.
+4. **Receive:** when the delivery arrives, Staff record it against the purchase order with
+   the delivery document number. Stock goes up and the order shows what is still
+   outstanding; partial deliveries are allowed.
+5. **Sell:** a sales order is created for a customer, confirmed by a Manager and fulfilled
+   by Staff, which issues the stock for every line. A tax invoice PDF is then available.
+6. **Correct:** a wrong entry is fixed by reversing it, and a physical count is entered as a
+   stocktake. The original records always stay in the history.
+7. **Review:** reports, the movement history and the activity log show exactly what
+   happened, when, and by whom.
+
+Every stock change in steps 4–6, from a page, a purchase order, a sales order or the API,
+goes through `inventory.services.record_stock_movement`. It locks the product row
+(`SELECT … FOR UPDATE`), checks the rules and permissions, updates the balance and writes
+a movement record in the same transaction, so balances stay correct when several people
+work at once.
+
+## Roles and access
+
+| Capability | Viewer | Staff | Manager | Admin |
+|---|:-:|:-:|:-:|:-:|
+| View products, stock, movements, suppliers, customers, orders and reports | ✓ | ✓ | ✓ | ✓ |
+| Receive and issue stock; record deliveries against purchase orders | | ✓ | ✓ | ✓ |
+| Create sales order drafts; fulfil confirmed sales orders | | ✓ | ✓ | ✓ |
+| Add and edit products, suppliers and customers | | | ✓ | ✓ |
+| Raise and cancel purchase orders; confirm and cancel sales orders | | | ✓ | ✓ |
+| Reverse movements and record stocktakes | | | ✓ | ✓ |
+| View the activity log | | | ✓ | ✓ |
+| Manage users and roles | | | | ✓ |
+
+- Roles are Django groups with fixed permissions, defined in `accounts/roles.py` and
+  re-applied after every `migrate`. Superusers have full access, including `/admin/`.
+- **Guest:** the *Explore as guest* button signs visitors in as the shared `demo_guest`
+  account, which has the Viewer role and no password, so it cannot be used any other way.
+  Guest sessions last two hours. Guests cannot see the activity log or user management.
+  The button appears only when `GUEST_ACCESS` is on and the guest account exists.
+- **Demo accounts** (`demo_admin`, `demo_manager`, `demo_staff`) exist only if you set
+  their passwords (see [Demo data](#demo-data)). While demo mode is on, their profiles and
+  passwords cannot be changed by visitors, and only a superuser can edit them.
+- The public deployment offers **guest access only**: visitors can look at everything, and
+  only the owner's superuser account can change data.
 
 ## Architecture
 
 ```
-Browser ── HTMX / Chart.js ──► Django views (server-rendered templates)
-                                    │
-             REST API (DRF) ───────►│
-                                    ▼
-                       Service layer (single entry point for stock)
-                       inventory.services.record_stock_movement
-                       sales.services.fulfil_order
-                                    │  SELECT … FOR UPDATE, idempotent operation IDs
-                                    ▼
-                               PostgreSQL
+Browser ── HTML pages + HTMX + Chart.js ──► Django views ─┐
+Other programs ── REST API (DRF, token) ──► API views ────┤
+                                                          ▼
+                     Service layer: inventory.services.record_stock_movement
+                                    sales.services.fulfil_order
+                     (row locking, business rules, idempotent operation IDs)
+                                                          │
+                                                          ▼
+                                                     PostgreSQL
 ```
-
-Stock is never edited directly. Receipts, issues, PO deliveries, reversals, stocktakes,
-sales fulfilment and API calls all go through `record_stock_movement`, which locks
-the product row, checks the business rules, writes an immutable movement with the
-balance before and after, and safely ignores a retried request.
 
 | App | Responsibility |
 |---|---|
-| `accounts` | User model, roles (`roles.py`), sign-in with lockout, profile, user management |
-| `inventory` | Catalog, stock service, purchase orders, corrections, dashboard, demo commands |
-| `suppliers` | Supplier contacts and product associations |
+| `accounts` | Custom user model, roles, sign-in with lockout, guest sign-in, profile, user management |
+| `inventory` | Products, stock balances and movements, the stock service, purchase orders, corrections, dashboard, demo-data commands |
+| `suppliers` | Supplier contacts and supplier–product links |
 | `sales` | Customers, sales orders and the fulfilment service |
-| `reports` | HTML, CSV and PDF reports |
-| `audit` | Activity log model, helpers and sign-in signals |
-| `api` | REST API and OpenAPI schema |
-| `config` | Settings, URLs, HTMX/PDF helpers, edit-conflict protection |
+| `reports` | Stock and movement reports as HTML, CSV and PDF |
+| `audit` | Activity log model, logging helpers and sign-in signals |
+| `api` | REST API, permissions and OpenAPI schema |
+| `config` | Settings, URL routing, HTMX and PDF helpers, edit-conflict protection |
 
-## Roles
+Main tables: `accounts_user`, `inventory_product`, `inventory_stockbalance`,
+`inventory_stockmovement`, `inventory_purchaseorder`, `suppliers_supplier`,
+`sales_customer`, `sales_salesorder`, `sales_salesorderline`, `audit_auditentry`.
 
-| Capability | Viewer | Staff | Manager | Admin |
-|---|:-:|:-:|:-:|:-:|
-| View catalog, stock, movements, suppliers, customers, orders, reports | ✓ | ✓ | ✓ | ✓ |
-| Receive and issue stock, receive PO deliveries | | ✓ | ✓ | ✓ |
-| Create sales order drafts, fulfil confirmed orders | | ✓ | ✓ | ✓ |
-| Add/edit products, suppliers, customers | | | ✓ | ✓ |
-| Raise/cancel purchase orders, confirm/cancel sales orders | | | ✓ | ✓ |
-| Reverse movements, stocktakes | | | ✓ | ✓ |
-| Activity log | | | ✓ | ✓ |
-| Manage users and roles | | | | ✓ |
+## Technology
 
-Roles are Django groups that are re-synchronised after every `migrate`
-(see `accounts/roles.py`). Superusers keep full access.
+| Layer | Technology |
+|---|---|
+| Language and framework | Python 3.11, Django 5.2 |
+| Database | PostgreSQL 17 (Docker Compose locally, Neon in production) |
+| Frontend | Django templates, HTML, CSS, JavaScript, HTMX 2, Chart.js 4 |
+| API | Django REST Framework, drf-spectacular (OpenAPI / Swagger) |
+| Documents | xhtml2pdf (PDF), Python `csv` (CSV) |
+| Serving | Gunicorn, WhiteNoise |
+| Testing and CI | Django test framework, GitHub Actions |
+| Hosting | Render (web service) and Neon (PostgreSQL) |
 
-## Local setup (Windows PowerShell)
+Exact package versions are pinned in `requirements.txt`.
 
-Requirements: Python 3.11, Git, Docker Desktop.
+## Run it locally
+
+Requirements: Python 3.11, Git and Docker Desktop. The commands are for Windows PowerShell.
 
 ```powershell
 git clone https://github.com/Md-Faiz-Alam/inventory-management-system.git
@@ -90,14 +203,15 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `.env`: set a new `DJANGO_SECRET_KEY` and a local `POSTGRES_PASSWORD`, keep
-`DJANGO_DEBUG=true`. Generate a key with:
+Edit `.env`: set a new `DJANGO_SECRET_KEY` and choose a `POSTGRES_PASSWORD`. Keep
+`DJANGO_DEBUG=true` for local development. To generate a secret key:
 
 ```powershell
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
-Then start PostgreSQL and the app:
+Start PostgreSQL (Docker Desktop must be running), create the tables and an admin
+account, then run the server:
 
 ```powershell
 docker compose up -d --wait
@@ -106,154 +220,182 @@ python manage.py createsuperuser
 python manage.py runserver 127.0.0.1:8001
 ```
 
-Open http://127.0.0.1:8001/.
+Open http://127.0.0.1:8001/ and sign in with the account you just created.
 
 ### Demo data
 
-Set `DEMO_ADMIN_PASSWORD`, `DEMO_MANAGER_PASSWORD` and `DEMO_STAFF_PASSWORD`
-(and `DEMO_MODE=true` to show them on the login page) in `.env`, then:
+`bootstrap_demo` prepares a demonstration and is safe to run any number of times:
 
 ```powershell
 python manage.py bootstrap_demo
 ```
 
-This creates the users `demo_admin`, `demo_manager` and `demo_staff`, 32 products,
-6 suppliers, 256 historical movements, 4 customers, 6 purchase orders and
-6 sales orders. It is safe to run repeatedly: existing data is never changed or deleted.
-`seed_demo --actor <username>` still loads only the catalog and movement history.
+It reads these settings from `.env` (all optional):
 
-## Deploying for free (Render + Neon)
+| Setting | Effect |
+|---|---|
+| `DEMO_MODE=true` | Turns on demo mode: demo accounts that have a password are offered on the sign-in page, and demo accounts are protected |
+| `GUEST_ACCESS` | Creates the read-only `demo_guest` account and shows the *Explore as guest* button. Defaults to the value of `DEMO_MODE` |
+| `DEMO_ADMIN_PASSWORD`, `DEMO_MANAGER_PASSWORD`, `DEMO_STAFF_PASSWORD` | Creates or updates `demo_admin`, `demo_manager`, `demo_staff` with that password. A demo account whose password is removed is deactivated |
+| `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_PASSWORD` | Creates this superuser once; later runs never change it |
 
-Render hosts the Django app on its free plan and Neon provides a free PostgreSQL
-database that does not expire.
+When `demo_admin`, `demo_manager` or the superuser above is available, it also loads the
+sample data once:
+32 products, 6 suppliers and 256 stock movements spread over four weeks, then 4 customers,
+6 purchase orders and 6 sales orders. If the sample catalogue already exists it is reused.
+The command never deletes records. (`python manage.py seed_demo --actor <username>`
+loads only the catalogue and movement history.)
 
-1. **Create the database.** Sign up at [neon.tech](https://neon.tech), create a project
-   (region: Asia Pacific / Singapore), and copy the connection string. It looks like
-   `postgresql://user:password@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
-2. **Push the code to GitHub.**
-3. **Create the web service.** Sign up at [render.com](https://render.com), choose
-   **New → Blueprint**, pick this repository. Render reads `render.yaml`.
-4. **Fill in the secret values** Render asks for:
-   - `DATABASE_URL`: the Neon connection string.
-   - `DJANGO_SUPERUSER_USERNAME` / `DJANGO_SUPERUSER_PASSWORD`: **your private admin
-     account**. Use a strong password you keep to yourself. It is created on the first
-     deploy only; later deploys never change it.
-   That is all. Visitors get a one-click, view-only **Explore as guest** button; only your
-   account can change data. Demo data is loaded under your account on the first deploy.
-5. **Deploy.** `build.sh` installs packages, collects static files, runs migrations and
-   `bootstrap_demo`. Gunicorn then serves the app at `https://<name>.onrender.com`.
+## Deploy for free (Render + Neon)
 
-Notes:
+Render runs the web app on its free plan and Neon provides a free PostgreSQL database.
 
-- The free Render plan sleeps after 15 minutes without traffic. The first request after
-  that takes about a minute. Open the site a few minutes before a demonstration.
-- `DJANGO_SECRET_KEY` is generated by Render. `RENDER_EXTERNAL_HOSTNAME` is added to
-  `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` automatically.
-- To use a custom domain, add it to `DJANGO_ALLOWED_HOSTS` and
-  `DJANGO_CSRF_TRUSTED_ORIGINS` (with `https://`).
+1. **Database:** sign up at [neon.tech](https://neon.tech), create a project in the
+   *Asia Pacific (Singapore)* region, open **Connect**, turn connection pooling off and copy
+   the connection string (`postgresql://…?sslmode=require`).
+2. **Code:** push this repository to your GitHub account.
+3. **Web service:** sign up at [render.com](https://render.com), choose
+   **New → Blueprint** and select the repository. Render reads `render.yaml`.
+4. **Secrets:** Render asks for three values:
+   - `DATABASE_URL`: the Neon connection string
+   - `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD`: your private admin account
+5. **Deploy:** `build.sh` installs the packages, collects static files, runs migrations,
+   creates the cache table and runs `bootstrap_demo`. Gunicorn then serves the site at
+   `https://<service-name>.onrender.com`. Every push to `main` redeploys automatically.
 
-## Visitor access
+`render.yaml` sets the rest: a generated `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=false`,
+`DEMO_MODE=true` and `GUEST_ACCESS=true`. Render's own host name is added to the allowed
+hosts and trusted origins automatically; a custom domain must be added to
+`DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS`.
 
-The public site is **view-only for visitors**:
-
-| Who | How they get in | What they can do |
-|---|---|---|
-| Anyone | Nothing needed | Landing page, live totals, API docs |
-| Guest | **Explore as guest** button, no password | Open every operational page, charts, reports and PDFs; change nothing |
-| You | Your own superuser account | Everything, including `/admin/` |
-
-Manager and Staff demo logins are **off** unless you set `DEMO_MANAGER_PASSWORD` /
-`DEMO_STAFF_PASSWORD`. If one of those is removed later, the next deploy deactivates
-that account, so a password that was once public stops working.
-
-The guest account (`demo_guest`) has no password, so it can only be used through the
-button, which signs in exactly that read-only account. Guests cannot see the activity
-log (it contains IP addresses) or user management. Demo accounts cannot change their
-own password or profile, and no demo account can edit a superuser, so your admin account
-stays as you left it. Turn the guest button off with `GUEST_ACCESS=false`.
-
-Admins can also give real users the read-only **Viewer** role.
+**If the site does not load:** the free plan sleeps after 15 minutes without visitors and
+usually wakes within a minute. If it stays unavailable, open the service in the Render
+dashboard and choose **Manual Deploy → Deploy latest commit**. The data in Neon is kept.
 
 ## REST API
 
-Interactive documentation: `/api/docs/` (OpenAPI schema at `/api/schema/`).
+Interactive documentation: [`/api/docs/`](https://stockflow-inventory-0qr7.onrender.com/api/docs/)
+(OpenAPI schema at `/api/schema/`). All endpoints need a signed-in user with the right role.
+
+| Endpoint | Methods | Notes |
+|---|---|---|
+| `/api/v1/auth/token/` | POST | Exchange a username and password for a token (same lockout as the sign-in page) |
+| `/api/v1/products/` | GET, POST, PUT, PATCH | Each product includes `on_hand` and `stock_status`; `?search=` and `?active=` filters |
+| `/api/v1/suppliers/`, `/api/v1/customers/` | GET, POST, PUT, PATCH | |
+| `/api/v1/stock-movements/` | GET, POST | POST records a receipt or issue through the stock service |
+| `/api/v1/purchase-orders/` | GET | Read-only |
+| `/api/v1/sales-orders/` | GET | Read-only; `POST /api/v1/sales-orders/{id}/fulfil/` fulfils a confirmed order |
+| `/api/v1/summary/` | GET | Stock totals, dashboard figures and chart data |
 
 ```bash
-# get a token
-curl -X POST -d "username=demo_manager&password=..." https://<host>/api/v1/auth/token/
+# Get a token
+curl -X POST -d "username=YOUR_USERNAME&password=YOUR_PASSWORD" \
+  https://stockflow-inventory-0qr7.onrender.com/api/v1/auth/token/
 
-# search products (each row includes on_hand and stock_status)
-curl -H "Authorization: Token <key>" "https://<host>/api/v1/products/?search=demo"
+# Search products
+curl -H "Authorization: Token YOUR_TOKEN" \
+  "https://stockflow-inventory-0qr7.onrender.com/api/v1/products/?search=lamp"
 
-# issue stock (repeat-safe: same operation_id is applied once)
-curl -X POST -H "Authorization: Token <key>" -H "Content-Type: application/json" \
+# Issue stock (sending the same operation_id again does not issue twice)
+curl -X POST -H "Authorization: Token YOUR_TOKEN" -H "Content-Type: application/json" \
   -d '{"product": 4, "kind": "issue", "quantity": 2, "reason": "Online order 1042", "operation_id": "6f1c0a7e-1b2c-4d3e-9f00-123456789abc"}' \
-  https://<host>/api/v1/stock-movements/
+  https://stockflow-inventory-0qr7.onrender.com/api/v1/stock-movements/
 ```
 
-Records are archived rather than deleted, so the API has no DELETE.
+Records are archived rather than deleted, so the API offers no DELETE. Requests are
+limited to 600 per hour per user. The guest account has no password and therefore
+cannot obtain a token.
 
 ## Testing
 
-### 1. Automated tests (about 200, against PostgreSQL)
+### Automated tests
+
+217 tests run against PostgreSQL. They cover the stock service (row locking, simultaneous
+requests, repeated submissions), purchase and sales workflows, permissions for every
+role, guest access, sign-in lockout, the activity log, the API, reports, PDFs, CSV
+exports and the live-search partials.
 
 ```powershell
-python manage.py test --noinput            # everything
-python manage.py test --noinput -v 2 sales # one app, with test names
+python manage.py test --noinput             # all tests
+python manage.py test --noinput -v 2 sales  # one app, listing each test
 ```
 
-They cover the stock engine (locking, concurrency, retries), purchase and sales
-workflows, roles, lockout, audit trail, API permissions, reports, PDFs and HTMX partials.
+### Continuous integration
 
-### 2. End-to-end website check
+GitHub Actions runs on every push and pull request to `main` against PostgreSQL 17:
+system checks, a missing-migrations check, migrations on a fresh database, all tests,
+static file collection, `bootstrap_demo` twice (it must change nothing the second time),
+Django's production deployment checks and a start-up test of Gunicorn.
 
-`scripts/check_site.py` signs in like a visitor and opens every page, live-search
-partial, report export, PDF, API endpoint and static file, then prints PASS/FAIL.
-It only reads data, so it is safe on the live site.
+### Website check
+
+`scripts/check_site.py` signs in like a visitor and opens every page, live-search result,
+report export, PDF, API endpoint and static file, then prints PASS, SKIP or FAIL for each.
+It only reads data, so it is safe to run against the live site. Pages the account's role
+may not open are reported as SKIP.
 
 ```powershell
-python manage.py runserver 127.0.0.1:8001     # in one terminal
-python scripts/check_site.py --base http://127.0.0.1:8001 --username demo_admin
-python scripts/check_site.py --base https://<your-app>.onrender.com --username demo_staff
+# As the read-only guest (no password needed)
+python scripts/check_site.py --base https://stockflow-inventory-0qr7.onrender.com --guest
+
+# As your own account (asks for the password)
+python scripts/check_site.py --base http://127.0.0.1:8001 --username YOUR_USERNAME
 ```
 
-Run it once per role: pages a role may not open are reported as SKIP (403), not FAIL.
-
-### 3. Before deploying
+### Before deploying
 
 ```powershell
 python manage.py check
 python manage.py makemigrations --check --dry-run
 $env:DJANGO_DEBUG="false"; $env:DJANGO_SECURE_HTTPS="true"; python manage.py check --deploy
-python manage.py collectstatic --noinput
 ```
 
-CI runs all of this plus `bootstrap_demo` twice and a Gunicorn smoke test on every push.
+## Project structure
 
-### VS Code
-
-`.vscode/` holds ready-made **tasks** (Terminal → Run Task: start DB, migrate + demo
-data, run website, run tests, check website, pre-deploy checks) and **debug
-configurations** (Run and Debug: debug the website, all tests, the tests in the open
-file, or the website checker). It also points VS Code at `.venv`, so imports resolve.
-The folder is git-ignored; remove `.vscode/` from `.gitignore` to share it.
+```
+inventory-management-system/
+├── accounts/            users, roles, sign-in, guest access, user management
+├── api/                 REST API
+├── audit/               activity log
+├── config/              settings, URLs, shared helpers
+├── inventory/           products, stock service, purchase orders, dashboard, demo commands
+├── reports/             reports and exports
+├── sales/               customers and sales orders
+├── suppliers/           suppliers
+├── templates/           HTML templates (pages, partials, PDF layouts)
+├── static/              CSS, JavaScript, bundled htmx and Chart.js
+├── scripts/check_site.py
+├── docs/screenshots/    images used in this README
+├── .github/workflows/   CI pipeline
+├── build.sh             Render build steps
+├── render.yaml          Render Blueprint
+├── compose.yaml         local PostgreSQL
+├── requirements.txt     pinned dependencies
+└── manage.py
+```
 
 ## Design notes and limits
 
-- Stock reports cover active products; movement reports keep archived-product history.
-  Unit prices are current catalog prices; purchase costs are stored on each PO receipt.
-- Report pages, totals and pagination come from one SQL snapshot.
-- CSV exports are capped at 10,000 rows and PDF reports at 500 rows.
-  Formula-like text in CSV cells is apostrophe-prefixed.
-- Edits to products, suppliers and customers carry a signed version token. Saving a form
-  that someone else changed in the meantime is refused instead of overwriting their work.
-- Sign-in lockout (page and API token) counts failures per username and client IP.
-  In production the counters live in a database cache table shared by all Gunicorn
-  workers. The client IP comes from Cloudflare's `True-Client-IP` on Render, never
-  from the spoofable `X-Forwarded-For`.
-- In demo mode the shared `demo_*` accounts are read-only (no password or profile
-  changes, cannot be edited by other users), so visitors cannot lock each other out.
-- A sales fulfilment cannot be reversed from the movement list; returned goods are
-  received as stock with a reason, so the order history stays truthful.
+- The stock report covers active products; the movement report also keeps the history of
+  archived products. Report rows, totals and page counts are read in a single query so
+  they always agree.
+- Unit prices in the catalogue are current prices; the agreed cost is stored with each
+  purchase order and its receipts.
+- CSV exports are limited to 10,000 rows and PDF reports to 500 rows. Text that a
+  spreadsheet could treat as a formula is prefixed with an apostrophe.
+- Edit forms carry a signed version token: saving a record that someone else changed in
+  the meantime is refused with a message instead of overwriting their work.
+- Sign-in lockout counts failures per username and client IP. In production the counters
+  are kept in a database cache table shared by all server processes, and the client IP is
+  taken from Cloudflare's `True-Client-IP` header on Render rather than the spoofable
+  `X-Forwarded-For`.
+- A stock issue that fulfilled a sales order cannot be reversed from the movement list;
+  returned goods are received back as stock with a reason, so the order history stays
+  accurate.
+- The free Render plan sleeps when idle, so the first request after a quiet period is slow.
 
-The college `Report/` folder is separate from the Django `reports/` app.
+## Author
+
+**Md Faiz Alam**, BCA (Bachelor of Computer Applications), Shoolini University
+
+GitHub: [@Md-Faiz-Alam](https://github.com/Md-Faiz-Alam)
