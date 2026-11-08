@@ -96,6 +96,10 @@ class PurchaseOrderTests(TestCase):
         self.client.force_login(self.staff)
         self.assertEqual(self.client.get(reverse("po-create")).status_code, 403)
         self.assertEqual(self.receive_against(order, 2).status_code, 302)
+        self.assertNotContains(self.client.get(reverse("po-detail", args=[order.pk])), "Cancel order")
+        self.assertEqual(self.client.post(reverse("po-cancel", args=[order.pk])).status_code, 403)
+        order.refresh_from_db()
+        self.assertFalse(order.cancelled)
         movement = StockMovement.objects.get()
         self.assertEqual(
             self.client.get(reverse("movement-reverse", args=[movement.pk])).status_code,

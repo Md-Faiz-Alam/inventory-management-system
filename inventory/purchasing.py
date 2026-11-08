@@ -232,7 +232,13 @@ def po_receive(request, pk):
 
 @login_required(login_url="login")
 @permission_required(
-    ["inventory.view_purchaseorder", "inventory.change_purchaseorder"],
+    # Staff may change an order (record deliveries) but only people who can raise
+    # orders (Manager/Admin) may cancel one.
+    [
+        "inventory.view_purchaseorder",
+        "inventory.change_purchaseorder",
+        "inventory.add_purchaseorder",
+    ],
     raise_exception=True,
 )
 @require_POST

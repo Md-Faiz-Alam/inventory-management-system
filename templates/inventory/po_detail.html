@@ -44,7 +44,7 @@
                     <a class="button button-primary" href="{% url 'po-receive' order.pk %}">Receive delivery</a>
                 {% endif %}
                 <a class="button button-quiet" href="{% url 'po-pdf' order.pk %}">Download PDF</a>
-                {% if not order.cancelled and order.outstanding and perms.inventory.change_purchaseorder %}
+                {% if not order.cancelled and order.outstanding and perms.inventory.change_purchaseorder and perms.inventory.add_purchaseorder %}
                     <form method="post" action="{% url 'po-cancel' order.pk %}" data-confirm="Cancel {{ order.reference }}? Stock already received stays on hand.">
                         {% csrf_token %}
                         <button class="button button-danger" type="submit">Cancel order</button>
