@@ -252,7 +252,7 @@ loads only the catalogue and movement history.)
 Render runs the web app on its free plan and Neon provides a free PostgreSQL database.
 
 1. **Database:** sign up at [neon.tech](https://neon.tech), create a project in the
-   *Asia Pacific (Singapore)* region, open **Connect**, turn connection pooling off and copy
+   *AWS US West 2 (Oregon)* region, open **Connect**, turn connection pooling off and copy
    the connection string (`postgresql://…?sslmode=require`).
 2. **Code:** push this repository to your GitHub account.
 3. **Web service:** sign up at [render.com](https://render.com), choose

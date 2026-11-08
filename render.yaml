@@ -2,10 +2,12 @@
 # The database is Neon (free, no expiry). Paste its connection string as DATABASE_URL.
 services:
   - type: web
-    name: stockflow-inventory
+    name: stockflow-inventory-oregon
     runtime: python
     plan: free
-    region: singapore
+    # Keep this next to the Neon database (AWS US West 2). Render cannot move a
+    # service between regions: changing this means creating a new service.
+    region: oregon
     buildCommand: bash build.sh
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
     healthCheckPath: /healthz/
