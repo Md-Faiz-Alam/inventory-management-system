@@ -2,7 +2,7 @@
 # The database is Neon (free, no expiry). Paste its connection string as DATABASE_URL.
 services:
   - type: web
-    name: stockflow-inventory-oregon
+    name: stockflow-inventory
     runtime: python
     plan: free
     # Keep this next to the Neon database (AWS US West 2). Render cannot move a

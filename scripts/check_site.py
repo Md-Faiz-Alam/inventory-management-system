@@ -5,7 +5,7 @@ Works against your local server or the deployed site. It only reads pages
 
 Usage:
     python scripts/check_site.py --base http://127.0.0.1:8000 --username demo_admin --password ...
-    python scripts/check_site.py --base https://stockflow-inventory.onrender.com -u demo_manager
+    python scripts/check_site.py --base https://stockflow-inventory-vtqp.onrender.com -u demo_manager
     python scripts/check_site.py --base http://127.0.0.1:8000 --guest
 
 The password can also come from the CHECK_PASSWORD environment variable.

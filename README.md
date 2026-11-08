@@ -12,7 +12,7 @@ Built with Django and PostgreSQL as a BCA Semester 6 major project.
 
 ### Live demo
 
-**https://stockflow-inventory-0qr7.onrender.com**
+**https://stockflow-inventory-vtqp.onrender.com**
 
 Click **Explore as guest** for a read-only tour of every page; no sign-up or password is
 needed. The site runs on Render's free plan, which sleeps after 15 minutes without
@@ -275,7 +275,7 @@ dashboard and choose **Manual Deploy → Deploy latest commit**. The data in Neo
 
 ## REST API
 
-Interactive documentation: [`/api/docs/`](https://stockflow-inventory-0qr7.onrender.com/api/docs/)
+Interactive documentation: [`/api/docs/`](https://stockflow-inventory-vtqp.onrender.com/api/docs/)
 (OpenAPI schema at `/api/schema/`). All endpoints need a signed-in user with the right role.
 
 | Endpoint | Methods | Notes |
@@ -291,16 +291,16 @@ Interactive documentation: [`/api/docs/`](https://stockflow-inventory-0qr7.onren
 ```bash
 # Get a token
 curl -X POST -d "username=YOUR_USERNAME&password=YOUR_PASSWORD" \
-  https://stockflow-inventory-0qr7.onrender.com/api/v1/auth/token/
+  https://stockflow-inventory-vtqp.onrender.com/api/v1/auth/token/
 
 # Search products
 curl -H "Authorization: Token YOUR_TOKEN" \
-  "https://stockflow-inventory-0qr7.onrender.com/api/v1/products/?search=lamp"
+  "https://stockflow-inventory-vtqp.onrender.com/api/v1/products/?search=lamp"
 
 # Issue stock (sending the same operation_id again does not issue twice)
 curl -X POST -H "Authorization: Token YOUR_TOKEN" -H "Content-Type: application/json" \
   -d '{"product": 4, "kind": "issue", "quantity": 2, "reason": "Online order 1042", "operation_id": "6f1c0a7e-1b2c-4d3e-9f00-123456789abc"}' \
-  https://stockflow-inventory-0qr7.onrender.com/api/v1/stock-movements/
+  https://stockflow-inventory-vtqp.onrender.com/api/v1/stock-movements/
 ```
 
 Records are archived rather than deleted, so the API offers no DELETE. Requests are
@@ -337,7 +337,7 @@ may not open are reported as SKIP.
 
 ```powershell
 # As the read-only guest (no password needed)
-python scripts/check_site.py --base https://stockflow-inventory-0qr7.onrender.com --guest
+python scripts/check_site.py --base https://stockflow-inventory-vtqp.onrender.com --guest
 
 # As your own account (asks for the password)
 python scripts/check_site.py --base http://127.0.0.1:8001 --username YOUR_USERNAME
